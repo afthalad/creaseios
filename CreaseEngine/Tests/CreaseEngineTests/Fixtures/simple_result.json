@@ -1,0 +1,22 @@
+{
+  "config": { "oversPerInnings": 1, "playersPerSide": 3, "ballsPerOver": 6 },
+  "inningsBattingTeam": ["A", "B"],
+  "events": [
+    { "t": "ball", "seq": 1, "inn": 0, "clientTs": "2026-01-01T10:00:00Z", "strikerId": "a1", "nonStrikerId": "a2", "bowlerId": "b1", "runsOffBat": 1 },
+    { "t": "ball", "seq": 2, "inn": 0, "clientTs": "2026-01-01T10:00:10Z", "strikerId": "a2", "nonStrikerId": "a1", "bowlerId": "b1", "runsOffBat": 4 },
+    { "t": "ball", "seq": 3, "inn": 0, "clientTs": "2026-01-01T10:00:20Z", "strikerId": "a2", "nonStrikerId": "a1", "bowlerId": "b1", "runsOffBat": 1 },
+    { "t": "ball", "seq": 4, "inn": 0, "clientTs": "2026-01-01T10:00:30Z", "strikerId": "a1", "nonStrikerId": "a2", "bowlerId": "b1", "runsOffBat": 0 },
+    { "t": "ball", "seq": 5, "inn": 0, "clientTs": "2026-01-01T10:00:40Z", "strikerId": "a1", "nonStrikerId": "a2", "bowlerId": "b1", "runsOffBat": 0,
+      "dismissal": { "type": "bowled", "bowlerId": "b1" }, "dismissedPlayerId": "a1", "incomingBatterId": "a3" },
+    { "t": "ball", "seq": 6, "inn": 0, "clientTs": "2026-01-01T10:00:50Z", "strikerId": "a3", "nonStrikerId": "a2", "bowlerId": "b1", "runsOffBat": 2 },
+    { "t": "ball", "seq": 7, "inn": 1, "clientTs": "2026-01-01T11:00:00Z", "strikerId": "c1", "nonStrikerId": "c2", "bowlerId": "a1", "runsOffBat": 4 },
+    { "t": "ball", "seq": 8, "inn": 1, "clientTs": "2026-01-01T11:00:10Z", "strikerId": "c1", "nonStrikerId": "c2", "bowlerId": "a1", "runsOffBat": 6 }
+  ],
+  "expected": {
+    "innings": [
+      { "runs": 8, "wickets": 1, "closed": true, "endReason": "overs completed" },
+      { "runs": 10, "wickets": 0, "closed": true, "endReason": "target reached" }
+    ],
+    "result": { "type": "win", "winner": "B", "text": "Team B won by 2 wickets" }
+  }
+}

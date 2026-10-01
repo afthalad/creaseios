@@ -1,0 +1,11 @@
+.DS_Store
+xcuserdata/
+.build/
+.swiftpm/
+DerivedData/
+
+# Firebase config (fetch from the Firebase console)
+creaseios/GoogleService-Info.plist
+
+# Marketing renders
+marketing/
