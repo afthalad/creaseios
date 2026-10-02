@@ -10,7 +10,6 @@
 		A1C0FFEE0000000000000001 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = A1C0FFEE0000000000000011 /* FirebaseAuth */; };
 		A1C0FFEE0000000000000002 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = A1C0FFEE0000000000000012 /* FirebaseFirestore */; };
 		A1C0FFEE0000000000000003 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = A1C0FFEE0000000000000013 /* FirebaseMessaging */; };
-		A1C0FFEE0000000000000004 /* CreaseEngine in Frameworks */ = {isa = PBXBuildFile; productRef = A1C0FFEE0000000000000014 /* CreaseEngine */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -33,7 +32,6 @@
 				A1C0FFEE0000000000000001 /* FirebaseAuth in Frameworks */,
 				A1C0FFEE0000000000000002 /* FirebaseFirestore in Frameworks */,
 				A1C0FFEE0000000000000003 /* FirebaseMessaging in Frameworks */,
-				A1C0FFEE0000000000000004 /* CreaseEngine in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -79,7 +77,6 @@
 				A1C0FFEE0000000000000011 /* FirebaseAuth */,
 				A1C0FFEE0000000000000012 /* FirebaseFirestore */,
 				A1C0FFEE0000000000000013 /* FirebaseMessaging */,
-				A1C0FFEE0000000000000014 /* CreaseEngine */,
 			);
 			productName = creaseios;
 			productReference = 13779C1B306E1F8400EF0323 /* creaseios.app */;
@@ -113,7 +110,6 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				A1C0FFEE0000000000000021 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
-				A1C0FFEE0000000000000022 /* XCLocalSwiftPackageReference "CreaseEngine" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 13779C1C306E1F8400EF0323 /* Products */;
@@ -271,6 +267,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Config/Crease.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = CY432ZL893;
@@ -290,6 +287,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.adacreations.crease;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -305,6 +303,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Config/Crease.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = CY432ZL893;
@@ -324,6 +323,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.adacreations.crease;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -356,13 +356,6 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCLocalSwiftPackageReference section */
-		A1C0FFEE0000000000000022 /* XCLocalSwiftPackageReference "CreaseEngine" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = CreaseEngine;
-		};
-/* End XCLocalSwiftPackageReference section */
-
 /* Begin XCRemoteSwiftPackageReference section */
 		A1C0FFEE0000000000000021 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
@@ -389,10 +382,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = A1C0FFEE0000000000000021 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseMessaging;
-		};
-		A1C0FFEE0000000000000014 /* CreaseEngine */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = CreaseEngine;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

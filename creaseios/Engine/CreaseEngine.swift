@@ -1,10 +1,10 @@
 import Foundation
 
 /// Rebuilds match state by folding the append-only event log. Same events in, same state out.
-public struct CreaseEngine: Sendable {
-    public init() {}
+struct CreaseEngine: Sendable {
+    init() {}
 
-    public func replay(events: [MatchEvent], config: MatchConfig, inningsBattingTeam: [String]) -> MatchState {
+    func replay(events: [MatchEvent], config: MatchConfig, inningsBattingTeam: [String]) -> MatchState {
         let voided = Set(events.compactMap { e -> Int? in
             if case .void(let s) = e.kind { return s }
             return nil
@@ -56,7 +56,7 @@ public struct CreaseEngine: Sendable {
         }
     }
 
-    public func result(_ s: MatchState, _ c: MatchConfig) -> MatchResult? {
+    func result(_ s: MatchState, _ c: MatchConfig) -> MatchResult? {
         guard s.innings.count >= 2, s.innings[0].closed, s.innings[1].closed else { return nil }
         let first = s.innings[0], second = s.innings[1]
         if first.runs == second.runs {

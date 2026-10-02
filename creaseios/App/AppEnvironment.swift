@@ -1,6 +1,5 @@
 import SwiftUI
 import FirebaseFirestore
-import CreaseEngine
 
 enum AppConfig {
     static let functionsBaseURL = URL(string: "https://zopovxkefvavxxlhnwzs.supabase.co/functions/v1")!

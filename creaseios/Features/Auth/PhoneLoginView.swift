@@ -1,6 +1,5 @@
 import SwiftUI
 import FirebaseAuth
-import CreaseEngine
 
 enum AuthStep: Int { case phone, code, name, createPlayer, done }
 

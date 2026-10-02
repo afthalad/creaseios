@@ -1,6 +1,6 @@
 import Foundation
 
-public enum ISODate {
+enum ISODate {
     nonisolated(unsafe) private static let withZone: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -21,49 +21,49 @@ public enum ISODate {
     }()
 
     /// Dart writes either `2026-09-30T10:15:00.000` (local) or `...Z` (UTC).
-    public static func parse(_ s: String) -> Date? {
+    static func parse(_ s: String) -> Date? {
         withZone.date(from: s)
             ?? withZoneNoFraction.date(from: s)
             ?? local.date(from: String(s.prefix(23)))
             ?? localNoFraction.date(from: String(s.prefix(19)))
     }
 
-    public static func string(_ d: Date) -> String { withZone.string(from: d) }
+    static func string(_ d: Date) -> String { withZone.string(from: d) }
 }
 
-public enum ExtraType: String, Codable, Sendable, CaseIterable { case wide, noBall, bye, legBye }
+enum ExtraType: String, Codable, Sendable, CaseIterable { case wide, noBall, bye, legBye }
 
-public enum DismissalType: String, Codable, Sendable, CaseIterable {
+enum DismissalType: String, Codable, Sendable, CaseIterable {
     case bowled, caught, lbw, runOut, stumped, hitWicket, retiredOut, obstructing
 
-    public var creditsBowler: Bool { [.bowled, .caught, .lbw, .stumped, .hitWicket].contains(self) }
-    public var needsFielder: Bool { [.caught, .stumped, .runOut].contains(self) }
+    var creditsBowler: Bool { [.bowled, .caught, .lbw, .stumped, .hitWicket].contains(self) }
+    var needsFielder: Bool { [.caught, .stumped, .runOut].contains(self) }
 }
 
-public struct Dismissal: Codable, Hashable, Sendable {
-    public var type: DismissalType
-    public var bowlerId: String?
-    public var fielderId: String?
+struct Dismissal: Codable, Hashable, Sendable {
+    var type: DismissalType
+    var bowlerId: String?
+    var fielderId: String?
 
-    public init(type: DismissalType, bowlerId: String? = nil, fielderId: String? = nil) {
+    init(type: DismissalType, bowlerId: String? = nil, fielderId: String? = nil) {
         self.type = type
         self.bowlerId = bowlerId
         self.fielderId = fielderId
     }
 }
 
-public struct BallEvent: Hashable, Sendable {
-    public var strikerId: String
-    public var nonStrikerId: String
-    public var bowlerId: String
-    public var runsOffBat = 0
-    public var extra: ExtraType?
-    public var extraRuns = 0
-    public var dismissal: Dismissal?
-    public var dismissedPlayerId: String?
-    public var incomingBatterId: String?
+struct BallEvent: Hashable, Sendable {
+    var strikerId: String
+    var nonStrikerId: String
+    var bowlerId: String
+    var runsOffBat = 0
+    var extra: ExtraType?
+    var extraRuns = 0
+    var dismissal: Dismissal?
+    var dismissedPlayerId: String?
+    var incomingBatterId: String?
 
-    public init(strikerId: String, nonStrikerId: String, bowlerId: String, runsOffBat: Int = 0,
+    init(strikerId: String, nonStrikerId: String, bowlerId: String, runsOffBat: Int = 0,
                 extra: ExtraType? = nil, extraRuns: Int = 0, dismissal: Dismissal? = nil,
                 dismissedPlayerId: String? = nil, incomingBatterId: String? = nil) {
         self.strikerId = strikerId
@@ -77,10 +77,10 @@ public struct BallEvent: Hashable, Sendable {
         self.incomingBatterId = incomingBatterId
     }
 
-    public var isLegal: Bool { extra != .wide && extra != .noBall }
-    public var battingTeamRuns: Int { runsOffBat + extraRuns + (isLegal ? 0 : 1) }
+    var isLegal: Bool { extra != .wide && extra != .noBall }
+    var battingTeamRuns: Int { runsOffBat + extraRuns + (isLegal ? 0 : 1) }
 
-    public var bowlerConcededRuns: Int {
+    var bowlerConcededRuns: Int {
         switch extra {
         case .bye, .legBye: 0
         case .wide: 1 + extraRuns
@@ -89,7 +89,7 @@ public struct BallEvent: Hashable, Sendable {
         }
     }
 
-    public var runsForStrikeRotation: Int {
+    var runsForStrikeRotation: Int {
         switch extra {
         case .bye, .legBye, .wide: extraRuns
         default: runsOffBat
@@ -97,7 +97,7 @@ public struct BallEvent: Hashable, Sendable {
     }
 }
 
-public enum EventKind: Hashable, Sendable {
+enum EventKind: Hashable, Sendable {
     case ball(BallEvent)
     case retire(outgoing: String, incoming: String, isOut: Bool)
     case swap
@@ -106,20 +106,20 @@ public enum EventKind: Hashable, Sendable {
     case void(seq: Int)
 }
 
-public struct MatchEvent: Hashable, Sendable, Codable {
-    public var seq: Int
-    public var inningsIndex: Int
-    public var clientTs: Date
-    public var kind: EventKind
+struct MatchEvent: Hashable, Sendable, Codable {
+    var seq: Int
+    var inningsIndex: Int
+    var clientTs: Date
+    var kind: EventKind
 
-    public init(seq: Int, inningsIndex: Int, clientTs: Date = .now, kind: EventKind) {
+    init(seq: Int, inningsIndex: Int, clientTs: Date = .now, kind: EventKind) {
         self.seq = seq
         self.inningsIndex = inningsIndex
         self.clientTs = clientTs
         self.kind = kind
     }
 
-    public var isVoid: Bool {
+    var isVoid: Bool {
         if case .void = kind { return true }
         return false
     }
@@ -130,7 +130,7 @@ public struct MatchEvent: Hashable, Sendable, Codable {
              text, reason, voidedSeq
     }
 
-    public init(from decoder: Decoder) throws {
+    init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: K.self)
         seq = try c.decode(Int.self, forKey: .seq)
         inningsIndex = try c.decode(Int.self, forKey: .inn)
@@ -159,7 +159,7 @@ public struct MatchEvent: Hashable, Sendable, Codable {
         }
     }
 
-    public func encode(to encoder: Encoder) throws {
+    func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: K.self)
         try c.encode(seq, forKey: .seq)
         try c.encode(inningsIndex, forKey: .inn)

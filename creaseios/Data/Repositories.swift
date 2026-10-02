@@ -1,5 +1,4 @@
 import FirebaseFirestore
-import CreaseEngine
 
 struct MatchRepository {
     let db: Firestore
@@ -39,6 +38,21 @@ struct MatchRepository {
         var q: Query = events(id).order(by: "seq")
         if let afterSeq { q = q.whereField("seq", isGreaterThan: afterSeq) }
         return try await q.getDocuments().documents.compactMap { try? $0.data(as: MatchEvent.self) }
+    }
+
+    /// Matches either side of which was picked from this team. Rules aren't filters, so each query is
+    /// limited to public matches or the viewer's own.
+    func teamMatches(_ teamID: String, uid: String?) async throws -> [Match] {
+        var queries: [Query] = []
+        for side in ["teamA.teamId", "teamB.teamId"] {
+            queries.append(matches.whereField(side, isEqualTo: teamID).whereField("isPublic", isEqualTo: true))
+            if let uid { queries.append(matches.whereField(side, isEqualTo: teamID).whereField("createdBy", isEqualTo: uid)) }
+        }
+        var byID: [String: Match] = [:]
+        for q in queries {
+            for d in try await q.getDocuments().documents { if let m = try? d.match() { byID[m.id] = m } }
+        }
+        return Array(byID.values)
     }
 
     func watchEvents(_ id: String) -> AsyncThrowingStream<[MatchEvent], Error> {
@@ -99,6 +113,7 @@ struct PlayerRepository {
     var players: CollectionReference { db.collection("players") }
 
     func watch(_ uid: String) -> AsyncThrowingStream<PlayerProfile?, Error> { players.document(uid).stream(PlayerProfile.self) }
+    func get(_ uid: String) async throws -> PlayerProfile? { try? await players.document(uid).getDocument(as: PlayerProfile.self) }
 
     func save(_ p: PlayerProfile, photo: Data? = nil) async throws {
         var p = p
@@ -155,6 +170,13 @@ struct TeamRepository {
     func invite(_ m: TeamMember) throws { try members.document(m.id).setData(from: m) }
     func accept(_ m: TeamMember) async throws { try await members.document(m.id).updateData(["status": "accepted"]) }
     func remove(_ m: TeamMember) async throws { try await members.document(m.id).delete() }
+
+    func setCaptains(_ teamID: String, captain: String?, vice: String?) async throws {
+        try await teams.document(teamID).updateData([
+            "captainId": captain ?? FieldValue.delete(),
+            "viceCaptainId": vice ?? FieldValue.delete(),
+        ])
+    }
 
     func setLogo(_ teamID: String, url: String) async throws {
         let b = db.batch()

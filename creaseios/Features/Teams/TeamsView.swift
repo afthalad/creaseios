@@ -1,6 +1,5 @@
 import SwiftUI
 import PhotosUI
-import CreaseEngine
 
 @MainActor @Observable
 final class TeamsModel {

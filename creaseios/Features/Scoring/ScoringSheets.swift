@@ -1,5 +1,4 @@
 import SwiftUI
-import CreaseEngine
 
 /// A list of players to choose from, with an inline field to add someone missing from the squad.
 struct PlayerPickList: View {

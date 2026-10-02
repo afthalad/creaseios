@@ -319,6 +319,8 @@ struct ChoiceChip: View {
 struct UnderlineTabs<Tab: Hashable>: View {
     let tabs: [(tab: Tab, title: LocalizedStringKey)]
     @Binding var selection: Tab
+    /// Dark text and a brand-green underline, for light surfaces instead of the brand header.
+    var onSurface = false
 
     var body: some View {
         HStack(spacing: 0) {
@@ -327,10 +329,10 @@ struct UnderlineTabs<Tab: Hashable>: View {
                 Button { selection = item.tab } label: {
                     Text(item.title)
                         .font(AppFont.body(16, .medium))
-                        .foregroundStyle(selected ? Palette.onBrand : Palette.onBrand2)
+                        .foregroundStyle(onSurface ? (selected ? Palette.ink : Palette.ink3) : (selected ? Palette.onBrand : Palette.onBrand2))
                         .padding(.vertical, 14)
                         .overlay(alignment: .bottom) {
-                            if selected { Capsule().fill(Palette.accent).frame(height: 3) }
+                            if selected { Capsule().fill(onSurface ? Palette.btn : Palette.accent).frame(height: 3) }
                         }
                         .frame(maxWidth: .infinity)
                         .contentShape(Rectangle())
@@ -338,7 +340,7 @@ struct UnderlineTabs<Tab: Hashable>: View {
                 .buttonStyle(.plain)
             }
         }
-        .overlay(alignment: .bottom) { Rectangle().fill(Color.white.opacity(0.08)).frame(height: 1) }
+        .overlay(alignment: .bottom) { Rectangle().fill(onSurface ? Palette.line : Color.white.opacity(0.08)).frame(height: 1) }
         .animation(.easeInOut(duration: 0.15), value: selection)
     }
 }

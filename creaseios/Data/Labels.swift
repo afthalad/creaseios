@@ -1,5 +1,4 @@
 import SwiftUI
-import CreaseEngine
 
 private extension String {
     var upperFirst: String { prefix(1).uppercased() + dropFirst() }

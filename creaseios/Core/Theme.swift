@@ -35,6 +35,7 @@ enum Palette {
     static let brand = Color.dynamic(0x0F3B29, 0x0E2A1D)
     static let brand2 = Color.dynamic(0x17503A, 0x153B29)
     static let liveScore = Color.dynamic(0x17503A, 0xC9F24B)
+    static let allRounder = Color.dynamic(0x7A3FD1, 0xB592FF)
     static let btn = Color.dynamic(0x0F3B29, 0x1F7A52)
     static let onBrand = Color.dynamic(0xF2F5EF, 0xECF2E9)
     static let onBrand2 = Color.dynamic(0xF2F5EF, 0xECF2E9, lightAlpha: 0.62, darkAlpha: 0.58)

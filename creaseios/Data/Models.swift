@@ -1,6 +1,5 @@
 import SwiftUI
 import FirebaseFirestore
-import CreaseEngine
 
 enum MatchFormat: String, Codable, CaseIterable {
     case t20, t10, odi, custom, softball, tapeBall, sixes
@@ -262,6 +261,8 @@ struct Team: Codable, Hashable, Identifiable {
     var createdAt: String
     var logoUrl: String?
     var searchTokens: [String] = []
+    var captainId: String?
+    var viceCaptainId: String?
 }
 
 struct TeamMember: Codable, Hashable, Identifiable {
