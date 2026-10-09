@@ -39,10 +39,10 @@ struct PlayerPickList: View {
                                 onAdd(newName)
                                 newName = ""
                             } label: {
-                                Image(systemName: "plus").fontWeight(.bold).foregroundStyle(Palette.onAccent)
+                                Image(systemName: "plus").fontWeight(.bold).foregroundStyle(Palette.onHighlight)
                             }
                             .buttonStyle(.borderedProminent)
-                            .tint(Palette.accent)
+                            .tint(Palette.highlight)
                             .controlSize(.large)
                             .disabled(newName.trimmed.isEmpty)
                         }
@@ -245,7 +245,7 @@ struct WicketSheet: View {
                     pickingBatter = true
                 }
             }
-            .primaryButton(tint: Palette.wkt)
+            .primaryButton(tint: Palette.wicket)
             .disabled(!canConfirm || outID == nil)
         }
     }
@@ -303,3 +303,32 @@ struct RetireSheet: View {
         .presentationDetents([.medium, .large])
     }
 }
+
+#if DEBUG
+@MainActor private func previewSheet<S: View>(@ViewBuilder _ sheet: @escaping () -> S) -> some View {
+    Color.clear.sheet(isPresented: .constant(true), content: sheet).previewEnvironment()
+}
+
+#Preview("Player pick list") {
+    PlayerPickList(title: "nextBatter", players: MatchTeam.sampleA.squad, teamColor: MatchTeam.sampleA.uiColor,
+                   selected: "kasun", onAdd: { _ in }) { _ in }
+        .padding()
+}
+
+#Preview("Openers sheet") { previewSheet { OpenersSheet(model: .preview(.upcoming)) } }
+
+#Preview("New bowler sheet") { previewSheet { NewBowlerSheet(model: .preview(.live)) } }
+
+#Preview("Run chips") {
+    @Previewable @State var runs = 1
+    RunChips(options: [0, 1, 2, 3, 4, 6], selection: $runs).padding()
+}
+
+#Preview("Label") { Label13(text: "runsOffBat").padding() }
+
+#Preview("Extras sheet") { previewSheet { ExtrasSheet(model: .preview(.live)) } }
+
+#Preview("Wicket sheet") { previewSheet { WicketSheet(model: .preview(.live)) } }
+
+#Preview("Retire sheet") { previewSheet { RetireSheet(model: .preview(.live)) } }
+#endif

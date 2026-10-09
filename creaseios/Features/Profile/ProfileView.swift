@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ProfileView: View {
+    @Environment(AppEnvironment.self) private var env
     @Environment(SessionStore.self) private var session
     @Environment(SettingsStore.self) private var settings
     @Environment(Router.self) private var router
@@ -23,10 +24,12 @@ struct ProfileView: View {
                 }
             }
             .padding(16)
+            .smoothChange(session.profile == nil)
+            .smoothChange(session.player)
         }
         .screenBackground()
         .brandTitle("profileTitle")
-        .brandNavBar()
+        .clearNavBar()
         .alert("profileEditName", isPresented: $editingName) {
             TextField("loginNameHint", text: $nameDraft).textInputAutocapitalization(.words)
             Button("cancel", role: .cancel) {}
@@ -109,11 +112,19 @@ struct ProfileView: View {
         }
         .card()
 
-        row("teams", icon: "person.3.fill") { router.select(.teams) }.card(padding: 4).padding(.top, 8)
+        VStack(spacing: 0) {
+            row("teams", icon: "person.3.fill") { router.select(.teams) }
+            Divider().padding(.leading, 48)
+            row("invitesTitle", icon: "envelope.fill") { router.push(.invites) }
+            Divider().padding(.leading, 48)
+            row("notificationsTitle", icon: "bell.fill", value: unread) { router.push(.notifications) }
+        }
+        .card(padding: 4)
+        .padding(.top, 8)
 
         preferences
 
-        row("profileSignOut", icon: "rectangle.portrait.and.arrow.right", tint: Palette.wkt) { confirmSignOut = true }
+        row("profileSignOut", icon: "rectangle.portrait.and.arrow.right", tint: Palette.wicket) { confirmSignOut = true }
             .card(padding: 4)
             .padding(.top, 8)
 
@@ -122,6 +133,11 @@ struct ProfileView: View {
             .foregroundStyle(Palette.ink3)
             .frame(maxWidth: .infinity)
             .padding(.top, 12)
+    }
+
+    private var unread: Text? {
+        let count = env.inbox.unreadCount
+        return count > 0 ? Text("unreadCount \(count)") : nil
     }
 
     private var preferences: some View {
@@ -145,7 +161,7 @@ struct ProfileView: View {
         Button(action: action) {
             HStack(spacing: 12) {
                 Image(systemName: icon).foregroundStyle(tint).frame(width: 24)
-                Text(title).font(AppFont.body(15, .medium)).foregroundStyle(tint == Palette.wkt ? Palette.wkt : Palette.ink)
+                Text(title).font(AppFont.body(15, .medium)).foregroundStyle(tint == Palette.wicket ? Palette.wicket : Palette.ink)
                 Spacer()
                 if let value { value.font(AppFont.body(14)).foregroundStyle(Palette.ink3) }
                 Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(Palette.ink3)
@@ -187,3 +203,17 @@ private struct ThemeSheet: View {
         .presentationCornerRadius(22)
     }
 }
+
+#if DEBUG
+#Preview("Profile") {
+    NavigationStack { ProfileView() }.previewEnvironment()
+}
+
+#Preview("Profile signed out") {
+    NavigationStack { ProfileView() }.previewEnvironment(signedIn: false)
+}
+
+#Preview("Theme sheet") {
+    Color.clear.sheet(isPresented: .constant(true)) { ThemeSheet() }.previewEnvironment()
+}
+#endif

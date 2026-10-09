@@ -42,7 +42,7 @@ struct WelcomeView: View {
                 Spacer()
                 Group {
                     Text("welcomeTitleLine1").foregroundStyle(.white).appear(shown, delay: 0)
-                    Text("welcomeTitleLine2").foregroundStyle(Palette.accent).appear(shown, delay: 0.14)
+                    Text("welcomeTitleLine2").foregroundStyle(Palette.highlight).appear(shown, delay: 0.14)
                 }
                 .font(AppFont.heading(38, .heavy))
                 .tracking(-1)
@@ -85,3 +85,9 @@ struct WelcomeView: View {
         if signIn { router.push(.login(redirect: nil)) }
     }
 }
+
+#if DEBUG
+#Preview("Welcome") {
+    NavigationStack { WelcomeView() }.previewEnvironment(signedIn: false)
+}
+#endif

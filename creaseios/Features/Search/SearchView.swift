@@ -8,6 +8,7 @@ struct SearchView: View {
     @Environment(Router.self) private var router
     @State private var query = ""
     @State private var teams: [Team] = []
+    @State private var searching = false
 
     private var term: String { query.trimmed.lowercased() }
 
@@ -24,6 +25,8 @@ struct SearchView: View {
             LazyVStack(spacing: 10) {
                 if term.isEmpty {
                     MessageView(text: "searchPrompt", systemImage: "magnifyingglass")
+                } else if searching && matches.isEmpty && teams.isEmpty {
+                    ProgressView().padding(.top, 64)
                 } else if matches.isEmpty && teams.isEmpty {
                     MessageView(text: "searchNothingFound", systemImage: "magnifyingglass")
                 } else {
@@ -43,17 +46,21 @@ struct SearchView: View {
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 16)
+            .smoothChange(searching)
+            .smoothChange(teams)
         }
         .scrollDismissesKeyboard(.interactively)
         .screenBackground()
         .brandTitle("searchTitle")
-        .brandNavBar()
+        .clearNavBar()
         .searchable(text: $query, prompt: Text("searchPrompt"))
         .task(id: term) {
-            guard !term.isEmpty else { teams = []; return }
+            guard !term.isEmpty else { teams = []; searching = false; return }
+            searching = true
             try? await Task.sleep(for: .milliseconds(300))
             guard !Task.isCancelled else { return }
             teams = (try? await env.teams.search(term)) ?? []
+            searching = false
         }
     }
 
@@ -72,3 +79,11 @@ struct SearchView: View {
         .card()
     }
 }
+
+#if DEBUG
+#Preview("Search") {
+    let home = HomeModel()
+    home.matches = [.live, .upcoming, .completed]
+    return NavigationStack { SearchView(home: home) }.previewEnvironment()
+}
+#endif

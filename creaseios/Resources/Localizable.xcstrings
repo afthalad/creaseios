@@ -346,9 +346,7 @@
         }
       }
     },
-    "" : {
-
-    },
+    "" : {},
     "accept" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5717,6 +5715,466 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "இன்னும் பேட் செய்யவில்லை"
+          }
+        }
+      }
+    },
+    "invitesTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invites"
+          }
+        },
+        "si" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ආරාධනා"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "அழைப்புகள்"
+          }
+        }
+      }
+    },
+    "invitesReceived" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Received"
+          }
+        },
+        "si" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ලැබුණු"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "பெற்றவை"
+          }
+        }
+      }
+    },
+    "invitesSent" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sent"
+          }
+        },
+        "si" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "යැවූ"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "அனுப்பியவை"
+          }
+        }
+      }
+    },
+    "invitesReceivedEmpty" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No invitations yet. When a team owner invites you, it shows up here."
+          }
+        },
+        "si" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "තවම ආරාධනා නැත. කණ්ඩායම් හිමිකරුවෙක් ඔබට ආරාධනා කළ විට එය මෙහි පෙන්වයි."
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "இன்னும் அழைப்புகள் இல்லை. ஒரு அணி உரிமையாளர் உங்களை அழைக்கும்போது அது இங்கே தோன்றும்."
+          }
+        }
+      }
+    },
+    "invitesSentEmpty" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You haven't invited anyone yet. Open one of your teams and tap + to add players."
+          }
+        },
+        "si" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ඔබ තවම කිසිවෙකුට ආරාධනා කර නැත. ඔබේ කණ්ඩායමක් විවෘත කර ක්‍රීඩකයින් එක් කිරීමට + ඔබන්න."
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "நீங்கள் இன்னும் யாரையும் அழைக்கவில்லை. உங்கள் அணியைத் திறந்து வீரர்களைச் சேர்க்க + ஐத் தட்டவும்."
+          }
+        }
+      }
+    },
+    "cancelInvite" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel invite"
+          }
+        },
+        "si" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ආරාධනාව අවලංගු කරන්න"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "அழைப்பை ரத்துசெய்"
+          }
+        }
+      }
+    },
+    "inviteAccepted" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Accepted"
+          }
+        },
+        "si" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "පිළිගත්තා"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ஏற்கப்பட்டது"
+          }
+        }
+      }
+    },
+    "inviteDeclined" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Declined"
+          }
+        },
+        "si" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ප්‍රතික්ෂේප කළා"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "நிராகரிக்கப்பட்டது"
+          }
+        }
+      }
+    },
+    "inviteAgain" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invite again"
+          }
+        },
+        "si" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "නැවත ආරාධනා කරන්න"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "மீண்டும் அழை"
+          }
+        }
+      }
+    },
+    "declineInviteTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Decline invitation?"
+          }
+        },
+        "si" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ආරාධනාව ප්‍රතික්ෂේප කරන්නද?"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "அழைப்பை நிராகரிக்கவா?"
+          }
+        }
+      }
+    },
+    "declineInviteBody %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tell the %@ owner why you can't join. This is optional."
+          }
+        },
+        "si" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ කණ්ඩායමේ හිමිකරුට ඔබට එක්විය නොහැකි හේතුව දන්වන්න. මෙය අනිවාර්ය නොවේ."
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "நீங்கள் ஏன் சேர முடியாது என்பதை %@ அணி உரிமையாளருக்குத் தெரிவிக்கவும். இது விருப்பத்தேர்வு."
+          }
+        }
+      }
+    },
+    "declineReasonHint" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reason (optional)"
+          }
+        },
+        "si" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "හේතුව (අනිවාර්ය නොවේ)"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "காரணம் (விருப்பத்தேர்வு)"
+          }
+        }
+      }
+    },
+    "notificationsTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notifications"
+          }
+        },
+        "si" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "දැනුම්දීම්"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "அறிவிப்புகள்"
+          }
+        }
+      }
+    },
+    "notificationsEmpty" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You're all caught up."
+          }
+        },
+        "si" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "නව දැනුම්දීම් නැත."
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "புதிய அறிவிப்புகள் இல்லை."
+          }
+        }
+      }
+    },
+    "markAllRead" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mark all read"
+          }
+        },
+        "si" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "සියල්ල කියවූ ලෙස සලකුණු කරන්න"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "அனைத்தையும் படித்ததாகக் குறி"
+          }
+        }
+      }
+    },
+    "notifTeamInvite %@ %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "**%1$@** invited you to join **%2$@**"
+          }
+        },
+        "si" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "**%1$@** ඔබට **%2$@** වෙත එක්වීමට ආරාධනා කළා"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "**%1$@** உங்களை **%2$@** அணியில் சேர அழைத்தார்"
+          }
+        }
+      }
+    },
+    "notifInviteAccepted %@ %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "**%1$@** accepted your invitation to **%2$@**"
+          }
+        },
+        "si" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "**%1$@** **%2$@** සඳහා ඔබේ ආරාධනාව පිළිගත්තා"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "**%1$@** **%2$@** அணிக்கான உங்கள் அழைப்பை ஏற்றார்"
+          }
+        }
+      }
+    },
+    "notifInviteDeclined %@ %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "**%1$@** declined your invitation to **%2$@**"
+          }
+        },
+        "si" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "**%1$@** **%2$@** සඳහා ඔබේ ආරාධනාව ප්‍රතික්ෂේප කළා"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "**%1$@** **%2$@** அணிக்கான உங்கள் அழைப்பை நிராகரித்தார்"
+          }
+        }
+      }
+    },
+    "unreadCount %lld" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld new"
+          }
+        },
+        "si" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "නව %lld"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld புதியவை"
+          }
+        }
+      }
+    },
+    "inviteActionFailed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't update the invitation. Please try again."
+          }
+        },
+        "si" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ආරාධනාව යාවත්කාලීන කළ නොහැකි විය. කරුණාකර නැවත උත්සාහ කරන්න."
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "அழைப்பைப் புதுப்பிக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்."
           }
         }
       }

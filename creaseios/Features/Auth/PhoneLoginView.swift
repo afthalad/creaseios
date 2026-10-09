@@ -63,16 +63,16 @@ final class PhoneAuthModel {
         submitting = true
         error = nil
         do {
-            let cred = PhoneAuthProvider.provider().credential(withVerificationID: verificationID, verificationCode: code)
-            let uid = try await Auth.auth().signIn(with: cred).user.uid
-            step = try await users.get(uid) == nil ? .name : .done
+            let credential = PhoneAuthProvider.provider().credential(withVerificationID: verificationID, verificationCode: code)
+            let user = try await Auth.auth().signIn(with: credential).user
+            step = try await users.get(user.uid) == nil ? .name : .done
         } catch {
             self.error = AuthError(error)
         }
         submitting = false
     }
 
-    func submitName(_ name: String) {
+    func submitName(_ name: String) async {
         guard let uid = Auth.auth().currentUser?.uid else { return }
         do {
             try users.save(UserProfile(uid: uid, phone: phone, name: name.trimmed, createdAt: ISODate.string(.now)))
@@ -158,7 +158,7 @@ private struct PhoneLoginContent: View {
             HStack(spacing: 6) {
                 ForEach(0..<3) { i in
                     Capsule()
-                        .fill(i <= min(model.step.rawValue, 2) ? Palette.accent : .white.opacity(0.12))
+                        .fill(i <= min(model.step.rawValue, 2) ? Palette.highlight : .white.opacity(0.12))
                         .frame(height: 3)
                 }
             }
@@ -180,7 +180,7 @@ private struct PhoneLoginContent: View {
                 Text(error.key)
             }
             .font(AppFont.body(14))
-            .foregroundStyle(Palette.wkt)
+            .foregroundStyle(Palette.wicket)
             .padding(.top, 14)
         }
     }
@@ -234,7 +234,7 @@ private struct PhoneLoginContent: View {
                         code = ""
                         Task { await model.sendCode(model.phone); secondsLeft = 30 }
                     }
-                    .foregroundStyle(Palette.accent)
+                    .foregroundStyle(Palette.highlight)
                 }
                 Spacer()
                 Button("loginChangeNumber") { model.step = .phone; model.error = nil; code = "" }
@@ -265,9 +265,9 @@ private struct PhoneLoginContent: View {
             HStack(spacing: 14) {
                 Text(verbatim: name.trimmed.first.map { String($0).uppercased() } ?? "")
                     .font(AppFont.heading(26, .bold))
-                    .foregroundStyle(Palette.onAccent)
+                    .foregroundStyle(Palette.onHighlight)
                     .frame(width: 56, height: 56)
-                    .background(Circle().fill(Palette.accent))
+                    .background(Circle().fill(Palette.highlight))
                 TextField("loginNameHint", text: $name)
                     .font(AppFont.body(17, .medium))
                     .foregroundStyle(.white)
@@ -282,7 +282,7 @@ private struct PhoneLoginContent: View {
             .padding(.top, 28)
             errorRow
             Spacer()
-            PillButton(title: "loginFinish") { model.submitName(name) }
+            PillButton(title: "loginFinish") { Task { await model.submitName(name) } }
                 .disabled(name.trimmed.isEmpty)
                 .opacity(name.trimmed.isEmpty ? 0.5 : 1)
         }
@@ -317,7 +317,7 @@ struct OTPField: View {
                         .frame(maxWidth: .infinity, minHeight: 56)
                         .background(RoundedRectangle(cornerRadius: 14).fill(.white.opacity(0.06)))
                         .overlay(RoundedRectangle(cornerRadius: 14).stroke(
-                            hasError ? Palette.wkt : (focused && i == code.count ? Palette.accent : .clear), lineWidth: 1.5))
+                            hasError ? Palette.wicket : (focused && i == code.count ? Palette.highlight : .clear), lineWidth: 1.5))
                 }
             }
             .contentShape(Rectangle())
@@ -326,3 +326,36 @@ struct OTPField: View {
         .onAppear { focused = true }
     }
 }
+
+#if DEBUG
+@MainActor private func previewLogin(_ step: AuthStep, error: AuthError? = nil) -> some View {
+    let env = AppEnvironment.preview(signedIn: false)
+    let model = PhoneAuthModel(users: env.users)
+    model.step = step
+    model.phone = "+94770000001"
+    model.error = error
+    return NavigationStack {
+        PhoneLoginContent(model: model, redirect: nil)
+            .background(Palette.darkBg.ignoresSafeArea())
+            .environment(\.colorScheme, .dark)
+    }
+    .previewEnvironment(env)
+}
+
+#Preview("Login phone") {
+    NavigationStack { PhoneLoginView(redirect: nil) }.previewEnvironment(signedIn: false)
+}
+
+#Preview("Login code") { previewLogin(.code) }
+
+#Preview("Login code error") { previewLogin(.code, error: .invalidCode) }
+
+#Preview("Login name") { previewLogin(.name) }
+
+#Preview("OTP field") {
+    @Previewable @State var code = "1234"
+    OTPField(code: $code) { _ in }
+        .padding()
+        .background(Palette.darkBg)
+}
+#endif

@@ -5,7 +5,7 @@ import PhotosUI
 final class TeamsModel {
     var memberships: [TeamMember]?
     var invites: [TeamMember] { memberships?.filter(\.isPending) ?? [] }
-    var teams: [TeamMember] { memberships?.filter { !$0.isPending } ?? [] }
+    var teams: [TeamMember] { memberships?.filter(\.isAccepted) ?? [] }
     let env: AppEnvironment
 
     init(env: AppEnvironment) { self.env = env }
@@ -20,7 +20,7 @@ final class TeamsModel {
         let now = ISODate.string(.now)
         var logoURL: String?
         if let data = logo?.jpegForUpload(maxSide: 512, quality: 0.85) {
-            do { logoURL = try await env.functions.uploadPhoto(data, teamID: id) } catch { return nil }
+            do { logoURL = try await env.photos.upload(data, teamID: id) } catch { return nil }
         }
         let trimmed = name.trimmed
         let team = Team(id: id, name: trimmed, shortName: shortName(trimmed), ownerId: owner.uid,
@@ -35,44 +35,21 @@ final class TeamsModel {
             return nil
         }
     }
-
-    func accept(_ invite: TeamMember) async {
-        do {
-            try await env.teams.accept(invite)
-            await env.functions.notify("invite_accepted", ["teamId": invite.teamId, "playerId": invite.playerId])
-        } catch {}
-    }
-
-    func decline(_ invite: TeamMember) async { try? await env.teams.remove(invite) }
 }
 
 struct TeamsView: View {
     @Environment(AppEnvironment.self) private var env
     @Environment(SessionStore.self) private var session
-    @Environment(Router.self) private var router
     @State private var model: TeamsModel?
 
     var body: some View {
-        @Bindable var router = router
-        ScrollView {
-            if let model { content(model).padding(16) }
+        Group {
+            if let model { TeamsContent(model: model) } else { SkeletonList(count: 3) }
         }
+        .smoothChange(model == nil)
         .screenBackground()
         .brandTitle("teams")
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button { router.creatingTeam = true } label: {
-                    Image(systemName: "plus").font(.system(size: 18, weight: .semibold))
-                }
-                .foregroundStyle(Palette.onBrand)
-                .accessibilityLabel(Text("newTeam"))
-            }
-            .withoutGlass()
-        }
-        .brandNavBar()
-        .sheet(isPresented: $router.creatingTeam) {
-            NewTeamSheet(model: model ?? TeamsModel(env: env)) { id in router.push(.team(id: id)) }
-        }
+        .clearNavBar()
         .task(id: session.uid) {
             guard let uid = session.uid else { return }
             let m = model ?? TeamsModel(env: env)
@@ -80,16 +57,66 @@ struct TeamsView: View {
             await m.watch(uid: uid)
         }
     }
+}
+
+private struct TeamsContent: View {
+    let model: TeamsModel
+    @Environment(Router.self) private var router
+    @State private var declining: TeamMember?
+    @State private var failed = false
+
+    var body: some View {
+        @Bindable var router = router
+        ScrollView {
+            content
+                .padding(16)
+                .smoothChange(model.memberships)
+        }
+        .toolbar {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                Button { router.push(.invites) } label: {
+                    IconBadge(systemName: "envelope", count: model.invites.count)
+                }
+                .foregroundStyle(Palette.ink)
+                .accessibilityLabel(Text("invitesTitle"))
+                Button { router.creatingTeam = true } label: {
+                    Image(systemName: "plus").font(.system(size: 18, weight: .semibold))
+                }
+                .foregroundStyle(Palette.ink)
+                .accessibilityLabel(Text("newTeam"))
+            }
+            .withoutGlass()
+        }
+        .sheet(isPresented: $router.creatingTeam) {
+            NewTeamSheet(model: model) { id in router.push(.team(id: id)) }
+        }
+        .sheet(item: $declining) { invite in
+            DeclineInviteSheet(invite: invite) { reason in
+                run { await model.env.decline(invite, reason: reason) }
+            }
+        }
+        .alert("inviteActionFailed", isPresented: $failed) { Button("ok") {} }
+    }
+
+    private func run(_ action: @escaping () async -> Bool) {
+        Task { if await !action() { failed = true } }
+    }
 
     @ViewBuilder
-    private func content(_ model: TeamsModel) -> some View {
+    private var content: some View {
         if model.memberships == nil {
             SkeletonList(count: 3)
         } else {
             VStack(spacing: 10) {
                 if !model.invites.isEmpty {
                     SectionHeader(title: "teamInvites", count: model.invites.count)
-                    ForEach(model.invites) { invite in inviteCard(invite, model) }
+                    ForEach(model.invites) { invite in
+                        InviteCard(invite: invite) {
+                            if await !model.env.accept(invite) { failed = true }
+                        } onDecline: {
+                            declining = invite
+                        }
+                    }
                 }
                 if model.teams.isEmpty {
                     if model.invites.isEmpty {
@@ -102,37 +129,24 @@ struct TeamsView: View {
                 } else {
                     SectionHeader(title: "myTeams", count: model.teams.count)
                     ForEach(model.teams) { m in
-                        Button { router.push(.team(id: m.teamId)) } label: { teamRow(m) }.buttonStyle(.plain)
+                        Button { router.push(.team(id: m.teamId)) } label: { TeamRow(member: m) }.buttonStyle(.plain)
                     }
                 }
             }
         }
     }
+}
 
-    private func inviteCard(_ invite: TeamMember, _ model: TeamsModel) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 12) {
-                TeamBadge(shortName: shortName(invite.teamName), color: Palette.brand2, logoURL: invite.teamLogoUrl, size: 44)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(verbatim: invite.teamName).font(AppFont.body(16, .semibold)).foregroundStyle(Palette.ink)
-                    Text("teamInvitedBy \(invite.ownerName)").font(AppFont.body(13)).foregroundStyle(Palette.ink3)
-                }
-            }
-            HStack(spacing: 10) {
-                Button("decline") { Task { await model.decline(invite) } }.secondaryButton()
-                Button("accept") { Task { await model.accept(invite) } }.primaryButton()
-            }
-        }
-        .card()
-    }
+struct TeamRow: View {
+    let member: TeamMember
 
-    private func teamRow(_ m: TeamMember) -> some View {
+    var body: some View {
         HStack(spacing: 12) {
-            TeamBadge(shortName: shortName(m.teamName), color: Palette.brand2, logoURL: m.teamLogoUrl, size: 44)
+            TeamBadge(shortName: shortName(member.teamName), color: Palette.brand2, logoURL: member.teamLogoUrl, size: 44)
             VStack(alignment: .leading, spacing: 2) {
-                Text(verbatim: m.teamName).font(AppFont.body(16, .semibold)).foregroundStyle(Palette.ink)
+                Text(verbatim: member.teamName).font(AppFont.body(16, .semibold)).foregroundStyle(Palette.ink)
                 Group {
-                    if m.isOwner { Text("teamOwner") } else { Text(verbatim: m.ownerName) }
+                    if member.isOwner { Text("teamOwner") } else { Text(verbatim: member.ownerName) }
                 }
                 .font(AppFont.body(13))
                 .foregroundStyle(Palette.ink3)
@@ -164,9 +178,9 @@ private struct NewTeamSheet: View {
                         .overlay(alignment: .bottomTrailing) {
                             Image(systemName: "camera.fill")
                                 .font(.system(size: 11))
-                                .foregroundStyle(Palette.onAccent)
+                                .foregroundStyle(Palette.onHighlight)
                                 .frame(width: 26, height: 26)
-                                .background(Circle().fill(Palette.accent))
+                                .background(Circle().fill(Palette.highlight))
                         }
                     Text("photoChoose").font(AppFont.body(13, .semibold)).foregroundStyle(Palette.six)
                 }
@@ -175,7 +189,7 @@ private struct NewTeamSheet: View {
                 .textInputAutocapitalization(.words)
                 .autocorrectionDisabled()
                 .fieldStyle()
-            if failed { Text("teamCreateError").font(AppFont.body(13)).foregroundStyle(Palette.wkt) }
+            if failed { Text("teamCreateError").font(AppFont.body(13)).foregroundStyle(Palette.wicket) }
             HStack(spacing: 10) {
                 Button("cancel") { dismiss() }.secondaryButton()
                 Button { Task { await create() } } label: {
@@ -207,3 +221,38 @@ private struct NewTeamSheet: View {
         }
     }
 }
+
+#if DEBUG
+@MainActor private func previewModel(_ memberships: [TeamMember]?) -> TeamsModel {
+    let m = TeamsModel(env: .preview())
+    m.memberships = memberships
+    return m
+}
+
+@MainActor private func previewScreen(_ memberships: [TeamMember]?) -> some View {
+    NavigationStack {
+        TeamsContent(model: previewModel(memberships))
+            .screenBackground()
+            .brandTitle("teams")
+            .clearNavBar()
+    }
+    .previewEnvironment()
+}
+
+#Preview("Teams") {
+    previewScreen([TeamMember.receivedSamples[0], .sample("Kasun Perera"), TeamMember.receivedSamples[1]])
+}
+
+#Preview("Teams empty") { previewScreen([]) }
+
+#Preview("Teams loading") { previewScreen(nil) }
+
+#Preview("Team row") {
+    TeamRow(member: .sample("Kasun Perera")).padding().screenBackground()
+}
+
+#Preview("New team sheet") {
+    Color.clear.sheet(isPresented: .constant(true)) { NewTeamSheet(model: previewModel([])) { _ in } }
+        .previewEnvironment()
+}
+#endif

@@ -41,7 +41,7 @@ struct MatchCard: View {
             }
             toggle(on: isFavorite, icon: "heart", onIcon: "heart.fill") { setFavorite(!isFavorite) }
         }
-        .font(AppFont.body(13, .medium))
+        .font(AppFont.body(10, .regular))
         .foregroundStyle(Palette.ink3)
         .frame(minHeight: 32)
     }
@@ -64,19 +64,23 @@ struct MatchCard: View {
             TeamBadge(shortName: team.shortName, color: team.uiColor, logoURL: team.logoUrl, size: 28, circular: true)
                 .padding(.trailing, 4)
             Text(verbatim: team.shortName)
-                .font(AppFont.body(15, .semibold))
+                .font(AppFont.body(12, .regular))
                 .foregroundStyle(Palette.ink)
                 .lineLimit(1)
+            Spacer()
             if let score {
                 Text(verbatim: "\(score.runs)-\(score.wickets)")
-                    .font(AppFont.mono(17, .bold))
+
+                    .fontWeight(.bold)
+                    .fontWeight(.medium)
                     .fixedSize()
-                    .foregroundStyle(batting ? Palette.liveScore : Palette.ink2)
+                    .foregroundStyle( Palette.ink2)
                 Text(verbatim: score.overs(match.config.ballsPerOver))
-                    .font(AppFont.mono(14))
+                    .fontWeight(.medium)
+                    .font(.caption)
                     .fixedSize()
                     .foregroundStyle(batting ? Palette.ink : Palette.ink3)
-                if batting { Image(systemName: "cricket.ball.fill").font(.system(size: 11)).foregroundStyle(Palette.liveScore) }
+                if batting { Image(systemName: "cricket.ball.fill").font(.system(size: 11)).foregroundStyle(Palette.ink) }
             } else if match.status == .live && !match.scores.isEmpty {
                 Text("yetToBat").font(AppFont.body(13)).foregroundStyle(Palette.ink3)
             }
@@ -136,3 +140,16 @@ struct MatchCard: View {
         }
     }
 }
+
+#if DEBUG
+#Preview("Match cards") {
+    ScrollView {
+        VStack(spacing: 10) {
+            ForEach([Match.live, .pending, .upcoming, .completed]) { MatchCard(match: $0) }
+        }
+        .padding()
+    }
+    .screenBackground()
+    .previewEnvironment()
+}
+#endif

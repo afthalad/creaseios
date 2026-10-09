@@ -36,6 +36,7 @@ final class HomeModel {
 
     var filter: Filter = .all
     var matches: [Match]?
+    var banners: [Banner]?
     var failed = false
 
     func watch(_ repo: MatchRepository, uid: String?) async {
@@ -44,6 +45,14 @@ final class HomeModel {
             for try await m in repo.watchMatches(uid: uid) { matches = m }
         } catch {
             failed = true
+        }
+    }
+
+    func watchBanners(_ repo: BannerRepository) async {
+        do {
+            for try await b in repo.watch() { banners = b }
+        } catch {
+            banners = []
         }
     }
 
@@ -72,23 +81,43 @@ struct HomeView: View {
     @Environment(Router.self) private var router
     let model: HomeModel
 
+    /// Testing a header with no background: the logo, bell and filters scroll away with the matches.
     var body: some View {
-        VStack(spacing: 0) {
-            filterBar
-            ScrollView {
-                content.padding(.horizontal, 16).padding(.bottom, 16)
+        ScrollView {
+            VStack(spacing: 0) {
+                header
+                filterBar
+                content
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 16)
+                    .smoothChange(model.failed)
+                    .smoothChange(model.matches?.map(\.id))
+                    .smoothChange(model.banners)
+                    .smoothChange(model.filter)
             }
         }
         .screenBackground()
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) { Wordmark().fixedSize() }.withoutGlass()
+        .toolbar(.hidden, for: .navigationBar)
+    }
+
+    private var header: some View {
+        HStack {
+            Wordmark(color: Palette.ink)
+            Spacer()
+            if session.isSignedIn {
+                Button { router.push(.notifications) } label: {
+                    IconBadge(systemName: "bell", count: env.inbox.unreadCount)
+                }
+                .foregroundStyle(Palette.ink)
+                .accessibilityLabel(Text("notificationsTitle"))
+            }
         }
-        .navigationBarTitleDisplayMode(.inline)
-        .brandNavBar()
-        .task(id: session.uid) { await model.watch(env.matches, uid: session.uid) }
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
     }
 
     @ViewBuilder private var content: some View {
+        if model.filter == .all { hero }
         if model.failed {
             MessageView(text: "errorGeneric", systemImage: "exclamationmark.triangle") {
                 Task { await model.watch(env.matches, uid: session.uid) }
@@ -113,11 +142,20 @@ struct HomeView: View {
         }
     }
 
+    /// Banners show on the All filter only, and hide when there are none.
+    @ViewBuilder private var hero: some View {
+        if let banners = model.banners {
+            if !banners.isEmpty { HeroCarousel(banners: banners).padding(.top, 16) }
+        } else {
+            HeroPlaceholder().padding(.top, 16)
+        }
+    }
+
     private var filterBar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 ForEach(HomeModel.Filter.allCases, id: \.self) { f in
-                    ChoiceChip(title: f.label, selected: model.filter == f, onBrand: true) {
+                    ChoiceChip(title: f.label, selected: model.filter == f) {
                         withAnimation(.easeInOut(duration: 0.2)) { model.filter = f }
                     }
                 }
@@ -125,6 +163,31 @@ struct HomeView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
         }
-        .background(Palette.brand)
     }
 }
+
+#if DEBUG
+@MainActor private func previewModel(_ matches: [Match]?, failed: Bool = false) -> HomeModel {
+    let m = HomeModel()
+    m.matches = matches
+    m.banners = Banner.samples
+    m.failed = failed
+    return m
+}
+
+#Preview("Home") {
+    NavigationStack { HomeView(model: previewModel([.live, .pending, .upcoming, .completed])) }.previewEnvironment()
+}
+
+#Preview("Home empty") {
+    NavigationStack { HomeView(model: previewModel([])) }.previewEnvironment()
+}
+
+#Preview("Home loading") {
+    NavigationStack { HomeView(model: previewModel(nil)) }.previewEnvironment(signedIn: false)
+}
+
+#Preview("Home error") {
+    NavigationStack { HomeView(model: previewModel(nil, failed: true)) }.previewEnvironment()
+}
+#endif

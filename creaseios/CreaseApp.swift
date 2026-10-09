@@ -8,11 +8,13 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
 
     func application(_ app: UIApplication,
                      didFinishLaunchingWithOptions opts: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        // Room for team logos and player photos, so they come back from disk instead of the network.
+        URLCache.shared = URLCache(memoryCapacity: 50_000_000, diskCapacity: 200_000_000)
         FirebaseApp.configure()
         if Auth.auth().currentUser?.isAnonymous == true { try? Auth.auth().signOut() }
         env = AppEnvironment()
         NotificationService.shared.configure(application: app)
-        return true
+        return true 
     }
 
     func application(_ app: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken token: Data) {
@@ -37,7 +39,9 @@ struct CreaseApp: App {
                 .environment(delegate.env.router)
                 .environment(delegate.env.session)
                 .environment(delegate.env.settings)
-                .onOpenURL { url in _ = Auth.auth().canHandle(url) }
+                .onOpenURL { url in
+                    _ = Auth.auth().canHandle(url)
+                }
         }
     }
 }

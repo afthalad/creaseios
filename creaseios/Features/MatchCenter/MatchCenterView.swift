@@ -10,12 +10,14 @@ struct MatchCenterView: View {
             if let model {
                 MatchCenterContent(model: model)
             } else {
-                ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+                SkeletonList()
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .smoothChange(model == nil)
         .screenBackground()
         .brandTitle("matchCentre")
-        .brandNavBar()
+        .clearNavBar()
         .task {
             let m = model ?? MatchCenterModel(matchID: matchID, env: env)
             model = m
@@ -33,32 +35,42 @@ private struct MatchCenterContent: View {
     @State private var tab: CenterTab = .live
 
     var body: some View {
-        if model.notFound {
-            MessageView(text: "errorNotFound", systemImage: "questionmark.circle")
-        } else if let match = model.match {
-            VStack(spacing: 0) {
-                UnderlineTabs(tabs: [(.live, match.status == .completed ? "tabSummary" : "tabLive"),
-                                     (.scorecard, "tabScorecard"),
-                                     (.squads, "tabSquads")],
-                              selection: $tab)
-                    .background(Palette.brand)
-                ScrollView {
-                    VStack(spacing: 0) {
-                        if tab == .live { LiveHero(match: match, state: model.state) }
-                        VStack(spacing: 12) {
-                            if match.status == .pending { pendingBanner(match) }
-                            switch tab {
-                            case .live: LiveTab(match: match, state: model.state)
-                            case .scorecard: ScorecardTab(match: match, state: model.state)
-                            case .squads: SquadsTab(match: match)
-                            }
+        Group {
+            if model.notFound {
+                MessageView(text: "errorNotFound", systemImage: "questionmark.circle")
+            } else if let match = model.match {
+                content(match)
+            } else {
+                SkeletonList()
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .smoothChange(model.match == nil)
+        .smoothChange(model.notFound)
+        .smoothChange(tab)
+    }
+
+    private func content(_ match: Match) -> some View {
+        VStack(spacing: 0) {
+            UnderlineTabs(tabs: [(.live, match.status == .completed ? "tabSummary" : "tabLive"),
+                                 (.scorecard, "tabScorecard"),
+                                 (.squads, "tabSquads")],
+                          selection: $tab)
+                
+            ScrollView {
+                VStack(spacing: 0) {
+                    if tab == .live { LiveHero(match: match, state: model.state) }
+                    VStack(spacing: 12) {
+                        if match.status == .pending { pendingBanner(match) }
+                        switch tab {
+                        case .live: LiveTab(match: match, state: model.state)
+                        case .scorecard: ScorecardTab(match: match, state: model.state)
+                        case .squads: SquadsTab(match: match)
                         }
-                        .padding(16)
                     }
+                    .padding(16)
                 }
             }
-        } else {
-            SkeletonList()
         }
     }
 
@@ -177,8 +189,7 @@ private struct LiveHero: View {
         .padding(.top, 18)
         .padding(.bottom, 20)
         .frame(maxWidth: .infinity, alignment: .leading)
-        // Extends upward so pulling the scroll view down never shows a gap under the tabs.
-        .background(alignment: .bottom) { Palette.brand.frame(height: 2000) }
+        .background(Palette.brand)
     }
 
     private func teamRow(_ team: MatchTeam, current: InningsState?) -> some View {
@@ -213,7 +224,7 @@ private struct LiveHero: View {
         let team = match.team(inn.battingTeam)
         let completed = match.status == .completed
         return HStack(spacing: 8) {
-            if !completed { PulsingDot(color: Palette.accent) }
+            if !completed { PulsingDot(color: Palette.highlight) }
             Group {
                 if completed, let result = match.displayResultText {
                     Text(verbatim: result)
@@ -225,7 +236,7 @@ private struct LiveHero: View {
                 }
             }
             .font(AppFont.body(15, .medium))
-            .foregroundStyle(Palette.accent)
+            .foregroundStyle(Palette.highlight)
         }
     }
 
@@ -449,9 +460,64 @@ private struct SquadsTab: View {
     private func tag(_ text: String) -> some View {
         Text(verbatim: text)
             .font(AppFont.mono(11, .semibold))
-            .foregroundStyle(Palette.onAccent)
+            .foregroundStyle(Palette.onHighlight)
             .padding(.horizontal, 7)
             .frame(height: 22)
-            .background(Capsule().fill(Palette.accent))
+            .background(Capsule().fill(Palette.highlight))
     }
 }
+
+#if DEBUG
+@MainActor private func previewCentre(_ match: Match) -> some View {
+    NavigationStack {
+        MatchCenterContent(model: .preview(match))
+            .screenBackground()
+            .brandTitle("matchCentre")
+            .clearNavBar()
+    }
+    .previewEnvironment()
+}
+
+#Preview("Match centre live") { previewCentre(.live) }
+
+#Preview("Match centre completed") { previewCentre(.completed) }
+
+#Preview("Match centre pending") { previewCentre(.pending) }
+
+#Preview("Match centre loading") {
+    NavigationStack { MatchCenterView(matchID: "live") }.previewEnvironment()
+}
+
+#Preview("Live hero") {
+    ScrollView { LiveHero(match: .live, state: Match.live.sampleState) }
+}
+
+#Preview("Live tab") {
+    ScrollView { VStack(spacing: 12) { LiveTab(match: .live, state: Match.live.sampleState) }.padding() }
+        .screenBackground()
+}
+
+#Preview("Summary tab") {
+    ScrollView { VStack(spacing: 12) { LiveTab(match: .completed, state: Match.completed.sampleState) }.padding() }
+        .screenBackground()
+}
+
+#Preview("Scorecard tab") {
+    ScrollView { VStack(spacing: 12) { ScorecardTab(match: .completed, state: Match.completed.sampleState) }.padding() }
+        .screenBackground()
+}
+
+#Preview("Squads tab") {
+    ScrollView { VStack(spacing: 12) { SquadsTab(match: .live) }.padding() }
+        .screenBackground()
+}
+
+#Preview("Stat table") {
+    StatTable(headers: ["Batter", "R", "B", "SR"], widths: [40, 40, 62],
+              rows: [("1", "Kasun Perera", "b Akila Pathirana", ["42", "31", "135.5"]),
+                     ("2", "Dilan Fernando", "not out", ["7", "12", "58.3"])])
+        .card()
+        .padding()
+        .screenBackground()
+}
+#endif

@@ -10,7 +10,7 @@ final class CreateMatchModel {
         var color: Int
         var squad: [Player] = []
 
-        static let defaultA = Side(name: "Team A", short: "TMA", color: 0xFF0F3B29)
+        static let defaultA = Side(name: "Team A", short: "TMA", color: 0xFF0B2D5B)
         static let defaultB = Side(name: "Team B", short: "TMB", color: 0xFF2E7DD1)
     }
 
@@ -31,6 +31,7 @@ final class CreateMatchModel {
     var tossDecision: TossDecision?
     var submitting = false
     var failed = false
+    var loadingSide: String?
 
     let env: AppEnvironment
     let creatorID: String?
@@ -63,6 +64,8 @@ final class CreateMatchModel {
     }
 
     func select(_ team: Team, side: String) async {
+        loadingSide = side
+        defer { loadingSide = nil }
         let members = (try? await env.teams.acceptedMembers(team.id)) ?? []
         let squad = members.map { Player(id: $0.playerId, name: $0.playerName, photoUrl: $0.playerPhotoUrl) }
         let color = side == "A" ? Side.defaultA.color : Side.defaultB.color
@@ -101,7 +104,7 @@ final class CreateMatchModel {
         m.pendingOwnerIds = pending
         do {
             try env.matches.create(m)
-            if !pending.isEmpty { await env.functions.notify("match_request", ["matchId": m.id]) }
+            if !pending.isEmpty { await env.notifier.notify("match_request", ["matchId": m.id]) }
             return (m.id, !pending.isEmpty)
         } catch {
             failed = true
@@ -150,7 +153,7 @@ private struct CreateMatchContent: View {
         .screenBackground()
         .navigationTitle(titles[model.step])
         .navigationBarTitleDisplayMode(.inline)
-        .brandNavBar()
+        .clearNavBar()
         .sheet(item: $pickingSide) { picking in
             let side = picking.side
             TeamPickerSheet(side: side) { team in
@@ -163,12 +166,11 @@ private struct CreateMatchContent: View {
     private var stepIndicator: some View {
         HStack(spacing: 6) {
             ForEach(0..<4) { i in
-                Capsule().fill(i <= model.step ? Palette.accent : .white.opacity(0.15)).frame(height: 4)
+                Capsule().fill(i <= model.step ? Palette.btn : Palette.line).frame(height: 4)
             }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .background(Palette.brand)
     }
 
     private var footer: some View {
@@ -254,13 +256,16 @@ private struct DetailsStep: View {
 private struct TeamsStep: View {
     @Bindable var model: CreateMatchModel
     let pick: (String) -> Void
-    private let swatches: [Int] = [0xFF0F3B29, 0xFF2E7DD1, 0xFFC9650F, 0xFFD0263A, 0xFF7B3FC4, 0xFF0F7A7A, 0xFF141813]
+    private let swatches: [Int] = [0xFF0B2D5B, 0xFF2E7DD1, 0xFFC9650F, 0xFFD0263A, 0xFF7B3FC4, 0xFFD4A21A, 0xFF1C1C1E]
 
     var body: some View {
-        ForEach(["A", "B"], id: \.self) { side in sideCard(side) }
-        if model.sameTeam {
-            Text("sameTeamError").font(AppFont.body(14)).foregroundStyle(Palette.wkt)
+        Group {
+            ForEach(["A", "B"], id: \.self) { side in sideCard(side) }
+            if model.sameTeam {
+                Text("sameTeamError").font(AppFont.body(14)).foregroundStyle(Palette.wicket)
+            }
         }
+        .smoothChange(model.loadingSide)
     }
 
     private func sideCard(_ s: String) -> some View {
@@ -284,11 +289,16 @@ private struct TeamsStep: View {
                         .foregroundStyle(Palette.ink3)
                     }
                     Spacer()
-                    Image(systemName: "chevron.right").foregroundStyle(Palette.ink3)
+                    if model.loadingSide == s {
+                        ProgressView()
+                    } else {
+                        Image(systemName: "chevron.right").foregroundStyle(Palette.ink3)
+                    }
                 }
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .disabled(model.loadingSide == s)
 
             if side.chosen && side.team == nil {
                 HStack(spacing: 10) {
@@ -303,7 +313,7 @@ private struct TeamsStep: View {
                         Circle()
                             .fill(Color(argb: c))
                             .frame(width: 30, height: 30)
-                            .overlay(Circle().stroke(Palette.accent, lineWidth: side.color == c ? 3 : 0))
+                            .overlay(Circle().stroke(Palette.highlight, lineWidth: side.color == c ? 3 : 0))
                             .onTapGesture { model.update(s) { $0.color = c } }
                     }
                 }
@@ -350,10 +360,10 @@ private struct SquadsStep: View {
                         .onSubmit { add(s) }
                         .fieldStyle()
                     Button { add(s) } label: {
-                        Image(systemName: "plus").fontWeight(.bold).foregroundStyle(Palette.onAccent)
+                        Image(systemName: "plus").fontWeight(.bold).foregroundStyle(Palette.onHighlight)
                     }
                     .buttonStyle(.borderedProminent)
-                    .tint(Palette.accent)
+                    .tint(Palette.highlight)
                     .controlSize(.large)
                 }
                 if side.squad.count < 2 {
@@ -425,9 +435,9 @@ struct TeamPickerSheet: View {
     @Environment(AppEnvironment.self) private var env
     @Environment(SessionStore.self) private var session
     @Environment(\.dismiss) private var dismiss
-    @State private var mine: [Team] = []
+    @State private var mine: [Team]?
     @State private var query = ""
-    @State private var results: [Team] = []
+    @State private var results: [Team]?
 
     var body: some View {
         NavigationStack {
@@ -436,22 +446,29 @@ struct TeamPickerSheet: View {
                     row(nil)
                 }
                 if query.trimmed.isEmpty {
-                    if !mine.isEmpty {
-                        Section("myTeams") { ForEach(mine) { row($0) } }
+                    if let mine {
+                        if !mine.isEmpty { Section("myTeams") { ForEach(mine) { row($0) } } }
+                    } else {
+                        loading
                     }
-                } else {
+                } else if let results {
                     Section { ForEach(results) { row($0) } }
+                } else {
+                    loading
                 }
             }
+            .smoothChange(mine)
+            .smoothChange(results)
             .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: Text("searchTeams"))
             .navigationTitle("chooseTeam")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("cancel") { dismiss() } } }
             .task {
-                guard let uid = session.uid else { return }
+                guard let uid = session.uid else { mine = []; return }
                 mine = (try? await env.teams.ownedBy(uid)) ?? []
             }
             .task(id: query) {
+                results = nil
                 try? await Task.sleep(for: .milliseconds(300))
                 guard !Task.isCancelled else { return }
                 results = (try? await env.teams.search(query)) ?? []
@@ -459,6 +476,10 @@ struct TeamPickerSheet: View {
         }
         .presentationDetents([.large])
         .presentationCornerRadius(22)
+    }
+
+    private var loading: some View {
+        ProgressView().frame(maxWidth: .infinity).listRowBackground(Color.clear)
     }
 
     private func row(_ team: Team?) -> some View {
@@ -484,3 +505,52 @@ struct TeamPickerSheet: View {
         }
     }
 }
+
+#if DEBUG
+@MainActor private func previewModel(step: Int) -> CreateMatchModel {
+    let m = CreateMatchModel(env: .preview(), creatorID: "kasun")
+    m.step = step
+    m.a = .init(team: .sample, chosen: true, name: "Kandy Kings", short: "KK", color: 0xFF0B2D5B, squad: MatchTeam.sampleA.squad)
+    m.b = .init(chosen: true, name: "Galle Gladiators", short: "GG", color: 0xFF2E7DD1, squad: Array(MatchTeam.sampleB.squad.prefix(3)))
+    m.tossWinner = "A"
+    return m
+}
+
+@MainActor private func previewWizard(step: Int) -> some View {
+    NavigationStack { CreateMatchContent(model: previewModel(step: step)) }.previewEnvironment()
+}
+
+#Preview("Create match details") { previewWizard(step: 0) }
+
+#Preview("Create match teams") { previewWizard(step: 1) }
+
+#Preview("Create match squads") { previewWizard(step: 2) }
+
+#Preview("Create match toss") { previewWizard(step: 3) }
+
+#Preview("Create match new") {
+    NavigationStack { CreateMatchWizard() }.previewEnvironment()
+}
+
+#Preview("Field label") { FieldLabel(title: "format").padding() }
+
+#Preview("Details step") {
+    ScrollView { VStack(spacing: 16) { DetailsStep(model: previewModel(step: 0)) }.padding() }.screenBackground()
+}
+
+#Preview("Teams step") {
+    ScrollView { VStack(spacing: 16) { TeamsStep(model: previewModel(step: 1)) { _ in } }.padding() }.screenBackground()
+}
+
+#Preview("Squads step") {
+    ScrollView { VStack(spacing: 16) { SquadsStep(model: previewModel(step: 2)) }.padding() }.screenBackground()
+}
+
+#Preview("Toss step") {
+    ScrollView { VStack(spacing: 16) { TossStep(model: previewModel(step: 3)) }.padding() }.screenBackground()
+}
+
+#Preview("Team picker sheet") {
+    Color.clear.sheet(isPresented: .constant(true)) { TeamPickerSheet(side: "A") { _ in } }.previewEnvironment()
+}
+#endif

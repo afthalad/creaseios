@@ -1,54 +1,39 @@
 import SwiftUI
 
 extension Color {
-    init(hex: UInt32, alpha: Double = 1) {
-        self.init(.sRGB, red: Double((hex >> 16) & 0xFF) / 255,
-                  green: Double((hex >> 8) & 0xFF) / 255,
-                  blue: Double(hex & 0xFF) / 255, opacity: alpha)
-    }
-
-    /// Flutter stores colours as 32-bit ARGB ints.
+    /// Team colours are stored as 32-bit ARGB ints, Flutter's format.
     init(argb: Int) {
         let v = UInt32(truncatingIfNeeded: argb)
-        self.init(hex: v & 0xFFFFFF, alpha: Double((v >> 24) & 0xFF) / 255)
-    }
-
-    static func dynamic(_ light: UInt32, _ dark: UInt32, lightAlpha: Double = 1, darkAlpha: Double = 1) -> Color {
-        Color(UIColor { trait in
-            trait.userInterfaceStyle == .dark
-                ? UIColor(Color(hex: dark, alpha: darkAlpha))
-                : UIColor(Color(hex: light, alpha: lightAlpha))
-        })
+        self.init(.sRGB, red: Double((v >> 16) & 0xFF) / 255, green: Double((v >> 8) & 0xFF) / 255,
+                  blue: Double(v & 0xFF) / 255, opacity: Double((v >> 24) & 0xFF) / 255)
     }
 }
 
+/// App colours (ESPNcricinfo navy and blue). Each name is a colour set with light and dark
+/// variants in Assets.xcassets/Colors.
 enum Palette {
-    static let bg = Color.dynamic(0xF4F5F5, 0x0B0E0C)
-    static let surface = Color.dynamic(0xFFFFFF, 0x141915)
-    static let surface2 = Color.dynamic(0xF6F7F6, 0x191F1A)
-    static let sunk = Color.dynamic(0xEFF1F0, 0x1E251F)
-    static let ink = Color.dynamic(0x141813, 0xECEFE8)
-    static let ink2 = Color.dynamic(0x4B5148, 0xB1B8AC)
-    static let ink3 = Color.dynamic(0x83887D, 0x778073)
-    static let line = Color.dynamic(0xE6E8E6, 0x232A24)
-    static let line2 = Color.dynamic(0xD6DAD7, 0x2F3830)
-    static let brand = Color.dynamic(0x0F3B29, 0x0E2A1D)
-    static let brand2 = Color.dynamic(0x17503A, 0x153B29)
-    static let liveScore = Color.dynamic(0x17503A, 0xC9F24B)
-    static let allRounder = Color.dynamic(0x7A3FD1, 0xB592FF)
-    static let btn = Color.dynamic(0x0F3B29, 0x1F7A52)
-    static let onBrand = Color.dynamic(0xF2F5EF, 0xECF2E9)
-    static let onBrand2 = Color.dynamic(0xF2F5EF, 0xECF2E9, lightAlpha: 0.62, darkAlpha: 0.58)
-    static let accent = Color(hex: 0xC9F24B)
-    static let onAccent = Color(hex: 0x142309)
-    static let live = Color.dynamic(0xE5322D, 0xFF5A4E)
-    static let four = Color.dynamic(0x1D5FD1, 0x5B8DEF)
-    static let six = Color.dynamic(0x0F7A4E, 0x3FBF7F)
-    static let wkt = Color.dynamic(0xD0263A, 0xF0556A)
-    static let extra = Color.dynamic(0xA86A12, 0xE0A640)
-    static let chart1 = Color.dynamic(0x2A62D4, 0x4F82E6)
-    static let chart2 = Color.dynamic(0xC9650F, 0xC97320)
-    static let darkBg = Color(hex: 0x0B0E0C)
+    static let bg = Color("Bg")
+    static let surface = Color("Surface")
+    static let surface2 = Color("Surface2")
+    static let sunk = Color("Sunk")
+    static let ink = Color("Ink")
+    static let ink2 = Color("Ink2")
+    static let ink3 = Color("Ink3")
+    static let line = Color("Line")
+    static let brand = Color("Brand")
+    static let brand2 = Color("Brand2")
+    static let btn = Color("Btn")
+    static let highlight = Color("Highlight")
+    static let onHighlight = Color("OnHighlight")
+    static let onBrand = Color("OnBrand")
+    static let onBrand2 = Color("OnBrand2")
+    static let allRounder = Color("AllRounder")
+    static let live = Color("Live")
+    static let four = Color("Four")
+    static let six = Color("Six")
+    static let wicket = Color("Wicket")
+    static let extra = Color("Extra")
+    static let darkBg = Color("DarkBg")
 }
 
 enum AppFont {
@@ -61,7 +46,6 @@ enum AppFont {
     static func mono(_ size: CGFloat, _ weight: Font.Weight = .medium) -> Font {
         .custom("Geist Mono", size: size).weight(weight)
     }
-    static let score = mono(40, .semibold)
 }
 
 extension View {
@@ -110,6 +94,11 @@ extension View {
         }
     }
 
+    /// Cross-fades the view when `value` changes, so loaded data eases in instead of popping.
+    func smoothChange<V: Equatable>(_ value: V) -> some View {
+        animation(.easeInOut(duration: 0.25), value: value)
+    }
+
     func screenBackground() -> some View {
         background(Palette.bg.ignoresSafeArea())
     }
@@ -125,7 +114,7 @@ extension View {
                     }
                     Text(title)
                         .font(AppFont.heading(20, .bold))
-                        .foregroundStyle(Palette.onBrand)
+                        .foregroundStyle(Palette.ink)
                 }
                 .fixedSize()
             }
@@ -135,22 +124,9 @@ extension View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    func brandNavBar() -> some View {
-        modifier(BrandNavBar())
-    }
-}
-
-/// `.toolbarColorScheme(.dark)` puts the bar in dark mode, which would resolve the adaptive brand
-/// green to its darker dark-mode shade. Resolving it against the screen's own appearance first keeps
-/// the bar the same green as the content under it.
-private struct BrandNavBar: ViewModifier {
-    @Environment(\.self) private var environment
-
-    func body(content: Content) -> some View {
-        content
-            .toolbarBackground(Color(Palette.brand.resolve(in: environment)), for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
-            .toolbarColorScheme(.dark, for: .navigationBar)
+    /// A transparent navigation bar; iOS blurs content as it scrolls underneath.
+    func clearNavBar() -> some View {
+        toolbarBackground(.hidden, for: .navigationBar)
     }
 }
 

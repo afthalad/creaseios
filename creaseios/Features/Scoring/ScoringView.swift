@@ -15,9 +15,10 @@ struct ScoringView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .smoothChange(model == nil)
         .screenBackground()
         .brandTitle("scoring") { router.pop() }
-        .brandNavBar()
+        .clearNavBar()
         .task {
             guard model == nil else { return }
             let m = ScoringModel(matchID: matchID, env: env)
@@ -58,6 +59,8 @@ private struct ScoringContent: View {
                 }
             }
         }
+        .smoothChange(model.match == nil)
+        .smoothChange(model.isComplete)
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 Button { router.push(.matchCenter(matchID: model.matchID)) } label: { Image(systemName: "list.bullet.clipboard") }
@@ -72,7 +75,7 @@ private struct ScoringContent: View {
             }
             .withoutGlass()
         }
-        .tint(Palette.onBrand)
+        .tint(Palette.ink)
         .sheet(item: sheetBinding) { s in
             Group {
                 switch s {
@@ -138,7 +141,7 @@ private struct ScoringContent: View {
                         Text("extra").textCase(.uppercase).font(AppFont.body(15, .bold)).tracking(1.5).foregroundStyle(Palette.extra)
                     }
                     .frame(width: unit)
-                    padKey(fill: Palette.wkt) { sheet = .wicket } label: {
+                    padKey(fill: Palette.wicket) { sheet = .wicket } label: {
                         Text("wicket").textCase(.uppercase).font(AppFont.body(15, .bold)).tracking(1.5).foregroundStyle(.white)
                     }
                     .frame(width: unit * 2)
@@ -182,7 +185,7 @@ private struct ScoringContent: View {
 
     private var resultView: some View {
         VStack(spacing: 16) {
-            Image(systemName: "trophy.fill").font(.system(size: 44)).foregroundStyle(Palette.accent)
+            Image(systemName: "trophy.fill").font(.system(size: 44)).foregroundStyle(Palette.highlight)
             Text("matchComplete").font(AppFont.heading(24, .heavy)).foregroundStyle(Palette.ink)
             Text(verbatim: model.match?.displayResultText ?? "")
                 .font(AppFont.body(17, .semibold))
@@ -287,7 +290,7 @@ struct CreasePanel: View {
     private func meta(localizedKey: LocalizedStringKey, _ value: String) -> some View {
         HStack(spacing: 5) {
             Text(localizedKey).font(AppFont.body(14)).foregroundStyle(Palette.onBrand2)
-            Text(verbatim: value).font(AppFont.mono(15, .semibold)).foregroundStyle(Palette.accent)
+            Text(verbatim: value).font(AppFont.mono(15, .semibold)).foregroundStyle(Palette.highlight)
         }
     }
 
@@ -299,3 +302,31 @@ struct CreasePanel: View {
         }
     }
 }
+
+#if DEBUG
+@MainActor private func previewScoring(_ match: Match) -> some View {
+    NavigationStack {
+        ScoringContent(model: .preview(match))
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .screenBackground()
+            .brandTitle("scoring") {}
+            .clearNavBar()
+    }
+    .previewEnvironment()
+}
+
+#Preview("Scoring live") { previewScoring(.live) }
+
+#Preview("Scoring before first ball") { previewScoring(.upcoming) }
+
+#Preview("Scoring complete") { previewScoring(.completed) }
+
+#Preview("Scoring loading") {
+    NavigationStack { ScoringView(matchID: "live") }.previewEnvironment()
+}
+
+#Preview("Crease panel") {
+    let state = Match.live.sampleState
+    return CreasePanel(match: .live, innings: state.innings[0], bowlerID: state.innings[0].currentBowlerId)
+}
+#endif

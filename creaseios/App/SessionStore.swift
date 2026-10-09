@@ -13,6 +13,7 @@ final class SessionStore {
     private let players: PlayerRepository
     private var handle: AuthStateDidChangeListenerHandle?
     private var tasks: [Task<Void, Never>] = []
+    private var previewing = false
 
     init(users: UserRepository, players: PlayerRepository) {
         self.users = users
@@ -27,7 +28,7 @@ final class SessionStore {
     }
 
     private func userChanged(_ uid: String?) {
-        guard uid != self.uid || loading else { return }
+        guard !previewing, uid != self.uid || loading else { return }
         tasks.forEach { $0.cancel() }
         tasks = []
         self.uid = uid
@@ -60,3 +61,16 @@ final class SessionStore {
 
     func signOut() { try? Auth.auth().signOut() }
 }
+
+#if DEBUG
+extension SessionStore {
+    /// Signs in a sample user for SwiftUI previews, ignoring Firebase Auth.
+    func preview(_ profile: UserProfile?, player: PlayerProfile?) {
+        previewing = true
+        uid = profile?.uid
+        self.profile = profile
+        self.player = player
+        loading = false
+    }
+}
+#endif

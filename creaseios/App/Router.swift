@@ -10,6 +10,8 @@ enum Route: Hashable {
     case playerProfileEdit
     case teams
     case team(id: String)
+    case invites
+    case notifications
 }
 
 enum RootTab: Hashable { case matches, teams, profile, newMatch }
@@ -68,6 +70,8 @@ final class Router {
         case (0, _): goHome()
         case (1, "teams"): select(.teams)
         case (1, "profile"): select(.profile)
+        case (1, "invites"): push(.invites)
+        case (1, "notifications"): push(.notifications)
         case (2, "teams"): push(.team(id: parts[1]))
         case (2, "match"): push(.matchCenter(matchID: parts[1]))
         case (2, "scoring"): push(.scoring(matchID: parts[1]))

@@ -9,3 +9,7 @@ creaseios/GoogleService-Info.plist
 
 # Marketing renders
 marketing/
+build/
+
+# Cloud Functions
+functions/node_modules/

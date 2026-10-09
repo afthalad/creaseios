@@ -1,0 +1,93 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /matches/{matchId} {
+      function isOwner() {
+        return request.auth != null && request.auth.uid == resource.data.createdBy;
+      }
+
+      function isPendingOwner() {
+        return request.auth != null && request.auth.uid in resource.data.get('pendingOwnerIds', []);
+      }
+
+      allow read: if resource == null || resource.data.isPublic == true || isOwner() || isPendingOwner();
+      allow create: if request.auth != null &&
+        request.auth.uid == request.resource.data.createdBy &&
+        (request.resource.data.get('pendingOwnerIds', []).size() == 0 || request.resource.data.status == 'pending');
+      allow update: if (isOwner() && resource.data.status != 'pending') ||
+        (isPendingOwner() &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'pendingOwnerIds']) &&
+          request.resource.data.status in ['pending', 'live']);
+      allow delete: if isOwner() || isPendingOwner();
+
+      match /events/{eventId} {
+        function parentMatch() {
+          return get(/databases/$(database)/documents/matches/$(matchId)).data;
+        }
+
+        allow read: if parentMatch().isPublic == true ||
+          (request.auth != null && request.auth.uid == parentMatch().createdBy);
+        allow write: if request.auth != null && request.auth.uid == parentMatch().createdBy;
+      }
+    }
+
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    match /players/{uid} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    match /teams/{teamId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.ownerId;
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.ownerId;
+    }
+
+    match /teamMembers/{memberId} {
+      function teamOwnerAfter(teamId) {
+        return getAfter(/databases/$(database)/documents/teams/$(teamId)).data.ownerId;
+      }
+
+      allow read: if request.auth != null;
+      allow create: if request.auth != null &&
+        memberId == request.resource.data.teamId + '_' + request.resource.data.playerId &&
+        request.resource.data.ownerId == request.auth.uid &&
+        teamOwnerAfter(request.resource.data.teamId) == request.auth.uid &&
+        (request.resource.data.status == 'pending' || request.resource.data.playerId == request.auth.uid);
+      // The player accepts or declines (with an optional short reason). The owner can change the logo,
+      // or send a declined invite again as a fresh pending one.
+      allow update: if request.auth != null && (
+        (request.auth.uid == resource.data.playerId &&
+          resource.data.status == 'pending' &&
+          request.resource.data.status in ['accepted', 'declined'] &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'respondedAt', 'declineReason']) &&
+          request.resource.data.get('declineReason', '').size() <= 200) ||
+        (request.auth.uid == resource.data.ownerId &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['teamLogoUrl'])) ||
+        (request.auth.uid == resource.data.ownerId &&
+          resource.data.status == 'declined' &&
+          request.resource.data.status == 'pending' &&
+          request.resource.data.teamId == resource.data.teamId &&
+          request.resource.data.playerId == resource.data.playerId &&
+          request.resource.data.ownerId == resource.data.ownerId)
+      );
+      allow delete: if request.auth != null &&
+        (request.auth.uid == resource.data.playerId || request.auth.uid == resource.data.ownerId);
+    }
+
+    // Home hero banners, edited in the Firebase console only.
+    match /banners/{id} {
+      allow read;
+    }
+
+    // Written only by the notify Cloud Function. Users read their own and mark them read.
+    match /notifications/{id} {
+      allow read, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow update: if request.auth != null && request.auth.uid == resource.data.userId &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+    }
+  }
+}

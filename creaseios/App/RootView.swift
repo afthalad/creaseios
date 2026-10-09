@@ -48,9 +48,11 @@ private struct RouteDestination: View {
         case .login(let redirect): PhoneLoginView(redirect: redirect).toolbar(.hidden, for: .tabBar)
         case .profile: ProfileView()
         case .playerProfileSetup(let redirect): PlayerProfileFormView(setup: true, redirect: redirect).toolbar(.hidden, for: .tabBar)
-        case .playerProfileEdit: PlayerProfileFormView(setup: false, redirect: nil)
+        case .playerProfileEdit: PlayerProfileFormView(setup: false, redirect: nil).toolbar(.hidden, for: .tabBar)
         case .teams: TeamsView()
-        case .team(let id): TeamView(teamID: id)
+        case .team(let id): TeamView(teamID: id).toolbar(.hidden, for: .tabBar)
+        case .invites: InvitesView().toolbar(.hidden, for: .tabBar)
+        case .notifications: NotificationsView().toolbar(.hidden, for: .tabBar)
         }
     }
 }
@@ -58,6 +60,7 @@ private struct RouteDestination: View {
 /// The root screens in a system tab bar. The + is an action, not a screen: on iOS 18+ it takes the
 /// separate glass button iOS 26 gives the search-role tab, and selecting it opens the create menu.
 private struct MainTabs: View {
+    @Environment(AppEnvironment.self) private var env
     @Environment(Router.self) private var router
     @Environment(SessionStore.self) private var session
     @State private var home = HomeModel()
@@ -81,7 +84,7 @@ private struct MainTabs: View {
                         Color.clear
                     }
                 }
-                .minimizesTabBarOnScroll()
+              
             } else {
                 TabView(selection: selection) {
                     stack(.matches) { HomeView(model: home) }
@@ -99,6 +102,9 @@ private struct MainTabs: View {
                 }
             }
         }
+        .task(id: session.uid) { await home.watch(env.matches, uid: session.uid) }
+        .task { await home.watchBanners(env.banners) }
+        .task(id: session.uid) { await env.inbox.watch(uid: session.uid) }
         .onChange(of: session.isSignedIn) { _, signedIn in
             if !signedIn && router.tab == .teams { router.tab = .matches }
         }
@@ -200,3 +206,17 @@ private struct CreateMenuSheet: View {
         .contentShape(Rectangle())
     }
 }
+
+#if DEBUG
+#Preview("Root") {
+    RootView().previewEnvironment()
+}
+
+#Preview("Main tabs signed out") {
+    MainTabs().previewEnvironment(signedIn: false)
+}
+
+#Preview("Create menu") {
+    Color.clear.sheet(isPresented: .constant(true)) { CreateMenuSheet { _ in } }
+}
+#endif

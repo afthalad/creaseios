@@ -17,7 +17,7 @@ struct BallChip: View {
 
     private var style: (bg: Color, fg: Color, border: Color?) {
         switch token {
-        case "W": return (Palette.wkt, .white, nil)
+        case "W": return (Palette.wicket, .white, nil)
         case "4": return (Palette.four, .white, nil)
         case "6": return (Palette.six, .white, nil)
         case "0", "•": return (Palette.sunk, Palette.ink3, nil)
@@ -39,7 +39,7 @@ struct PillButton: View {
             if secondary {
                 Button(action: action) { label.foregroundStyle(.white) }.secondaryButton(tint: .white)
             } else {
-                Button(action: action) { label.foregroundStyle(Palette.onAccent) }.primaryButton(tint: Palette.accent)
+                Button(action: action) { label.foregroundStyle(Palette.onHighlight) }.primaryButton(tint: Palette.highlight)
             }
         }
         .disabled(loading)
@@ -49,8 +49,50 @@ struct PillButton: View {
 
     private var label: some View {
         ZStack {
-            if loading { ProgressView().tint(secondary ? .white : Palette.onAccent) }
+            if loading { ProgressView().tint(secondary ? .white : Palette.onHighlight) }
             else { Text(title).font(AppFont.body(16, .bold)) }
+        }
+    }
+}
+
+/// Decoded images kept in memory, so rows scrolling back into view show them instantly.
+final class ImageCache: @unchecked Sendable {
+    static let shared = ImageCache()
+    private let cache = NSCache<NSURL, UIImage>()
+
+    func image(for url: URL) -> UIImage? { cache.object(forKey: url as NSURL) }
+
+    func load(_ url: URL) async -> UIImage? {
+        if let image = image(for: url) { return image }
+        guard let (data, _) = try? await URLSession.shared.data(from: url), let raw = UIImage(data: data) else { return nil }
+        let image = await raw.byPreparingForDisplay() ?? raw
+        cache.setObject(image, forKey: url as NSURL)
+        return image
+    }
+}
+
+/// An image from a URL over a placeholder. Cached images show at once; new ones fade in.
+struct RemoteImage<Placeholder: View>: View {
+    let url: URL
+    let placeholder: Placeholder
+    @State private var image: UIImage?
+
+    init(url: URL, @ViewBuilder placeholder: () -> Placeholder) {
+        self.url = url
+        self.placeholder = placeholder()
+        _image = State(initialValue: ImageCache.shared.image(for: url))
+    }
+
+    var body: some View {
+        ZStack {
+            placeholder
+            if let image {
+                Image(uiImage: image).resizable().scaledToFill().transition(.opacity)
+            }
+        }
+        .task(id: url) {
+            let loaded = await ImageCache.shared.load(url)
+            if loaded !== image { withAnimation(.easeOut(duration: 0.25)) { image = loaded } }
         }
     }
 }
@@ -70,7 +112,7 @@ struct TeamBadge: View {
             if let image {
                 Image(uiImage: image).resizable().scaledToFill()
             } else if let url = logoURL.flatMap(URL.init) {
-                AsyncImage(url: url) { $0.resizable().scaledToFill() } placeholder: { label }
+                RemoteImage(url: url) { label }
             } else {
                 label
             }
@@ -102,9 +144,9 @@ struct PlayerAvatar: View {
     var body: some View {
         let tc = teamColor ?? Palette.ink2
         ZStack {
-            Circle().fill(highlighted ? Palette.accent : tc.opacity(0.16))
+            Circle().fill(highlighted ? Palette.highlight : tc.opacity(0.16))
             if let url = photoURL.flatMap(URL.init) {
-                AsyncImage(url: url) { $0.resizable().scaledToFill() } placeholder: { label(tc) }
+                RemoteImage(url: url) { label(tc) }
             } else {
                 label(tc)
             }
@@ -133,7 +175,7 @@ struct PlayerPhoto: View {
             if let image {
                 Image(uiImage: image).resizable().scaledToFill()
             } else if let url = photoURL.flatMap(URL.init) {
-                AsyncImage(url: url) { $0.resizable().scaledToFill() } placeholder: { placeholder }
+                RemoteImage(url: url) { placeholder }
             } else {
                 placeholder
             }
@@ -147,7 +189,7 @@ struct PlayerPhoto: View {
 /// Three stumps and bails, drawn on a 24 x 24 grid.
 struct CreaseLogo: View {
     var size: CGFloat = 24
-    var color: Color = Palette.accent
+    var color: Color = Palette.highlight
 
     var body: some View {
         Canvas { ctx, canvas in
@@ -165,6 +207,7 @@ struct CreaseLogo: View {
 
 struct Wordmark: View {
     var size: CGFloat = 22
+    var color: Color = .white
 
     var body: some View {
         HStack(spacing: 8) {
@@ -172,7 +215,7 @@ struct Wordmark: View {
             Text(verbatim: "crease")
                 .font(AppFont.heading(size, .heavy))
                 .tracking(-0.5)
-                .foregroundStyle(.white)
+                .foregroundStyle(color)
         }
     }
 }
@@ -189,8 +232,9 @@ struct PulsingDot: View {
     }
 }
 
+/// A shimmering placeholder. With no height it fills the space it's given.
 struct Skeleton: View {
-    var height: CGFloat = 16
+    var height: CGFloat? = 16
     var radius: CGFloat = 8
     @State private var phase = false
 
@@ -289,7 +333,6 @@ struct ExpandableCard<Content: View>: View {
 struct ChoiceChip: View {
     let title: LocalizedStringKey
     let selected: Bool
-    var onBrand = false
     let action: () -> Void
 
     var body: some View {
@@ -298,29 +341,17 @@ struct ChoiceChip: View {
                 .font(AppFont.body(13.5, .semibold))
                 .padding(.horizontal, 14)
                 .frame(height: 32)
-                .foregroundStyle(foreground)
-                .background(Capsule().fill(background))
+                .foregroundStyle(selected ? Palette.onBrand : Palette.ink2)
+                .background(Capsule().fill(selected ? Palette.brand : Palette.sunk))
         }
         .buttonStyle(.plain)
     }
-
-    private var foreground: Color {
-        if onBrand { return selected ? Palette.onAccent : Palette.onBrand2 }
-        return selected ? Palette.onBrand : Palette.ink2
-    }
-
-    private var background: Color {
-        if onBrand { return selected ? Palette.accent : .white.opacity(0.08) }
-        return selected ? Palette.brand : Palette.sunk
-    }
 }
 
-/// Equal-width tabs with a short accent underline, drawn on the brand header.
+/// Equal-width tabs with a short blue underline under the selected one.
 struct UnderlineTabs<Tab: Hashable>: View {
     let tabs: [(tab: Tab, title: LocalizedStringKey)]
     @Binding var selection: Tab
-    /// Dark text and a brand-green underline, for light surfaces instead of the brand header.
-    var onSurface = false
 
     var body: some View {
         HStack(spacing: 0) {
@@ -329,10 +360,10 @@ struct UnderlineTabs<Tab: Hashable>: View {
                 Button { selection = item.tab } label: {
                     Text(item.title)
                         .font(AppFont.body(16, .medium))
-                        .foregroundStyle(onSurface ? (selected ? Palette.ink : Palette.ink3) : (selected ? Palette.onBrand : Palette.onBrand2))
+                        .foregroundStyle(selected ? Palette.ink : Palette.ink3)
                         .padding(.vertical, 14)
                         .overlay(alignment: .bottom) {
-                            if selected { Capsule().fill(onSurface ? Palette.btn : Palette.accent).frame(height: 3) }
+                            if selected { Capsule().fill(Palette.btn).frame(height: 3) }
                         }
                         .frame(maxWidth: .infinity)
                         .contentShape(Rectangle())
@@ -340,7 +371,7 @@ struct UnderlineTabs<Tab: Hashable>: View {
                 .buttonStyle(.plain)
             }
         }
-        .overlay(alignment: .bottom) { Rectangle().fill(onSurface ? Palette.line : Color.white.opacity(0.08)).frame(height: 1) }
+        .overlay(alignment: .bottom) { Rectangle().fill(Palette.line).frame(height: 1) }
         .animation(.easeInOut(duration: 0.15), value: selection)
     }
 }
@@ -452,6 +483,28 @@ struct FlowLayout: Layout {
     }
 }
 
+/// A toolbar icon with a small red count, hidden at zero.
+struct IconBadge: View {
+    let systemName: String
+    var count = 0
+
+    var body: some View {
+        Image(systemName: systemName)
+            .font(.system(size: 18, weight: .semibold))
+            .overlay(alignment: .topTrailing) {
+                if count > 0 {
+                    Text(verbatim: count > 9 ? "9+" : "\(count)")
+                        .font(AppFont.mono(10, .bold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 4)
+                        .frame(minWidth: 17, minHeight: 17)
+                        .background(Capsule().fill(Palette.live))
+                        .offset(x: 9, y: -7)
+                }
+            }
+    }
+}
+
 struct SheetTitle: View {
     let title: LocalizedStringKey
 
@@ -493,3 +546,142 @@ struct LanguageSheet: View {
         .presentationCornerRadius(22)
     }
 }
+
+#if DEBUG
+#Preview("Ball chips") {
+    HStack(spacing: 6) {
+        ForEach(["•", "1", "4", "6", "W", "wd", "nb1", "lb2"], id: \.self) { BallChip(token: $0) }
+    }
+    .padding()
+}
+
+#Preview("Pill buttons") {
+    VStack(spacing: 12) {
+        PillButton(title: "welcomeGetStarted") {}
+        PillButton(title: "welcomeBrowse", secondary: true) {}
+        PillButton(title: "loginSendCode", loading: true) {}
+    }
+    .padding()
+    .background(Palette.darkBg)
+}
+
+#Preview("Team badges") {
+    HStack(spacing: 12) {
+        TeamBadge(shortName: "KK", color: Palette.brand2)
+        TeamBadge(shortName: "GG", color: Color(argb: 0xFF2E7DD1), size: 44)
+        TeamBadge(shortName: "CS", color: Palette.wicket, size: 64, circular: true)
+    }
+    .padding()
+}
+
+#Preview("Player avatars") {
+    HStack(spacing: 12) {
+        PlayerAvatar(name: "Kasun Perera")
+        PlayerAvatar(name: "Dilan Fernando", highlighted: true)
+        PlayerAvatar(name: "Nuwan Silva", size: 56, teamColor: Palette.four, bordered: true)
+    }
+    .padding()
+}
+
+#Preview("Player photos") {
+    HStack(spacing: 12) {
+        PlayerPhoto()
+        PlayerPhoto(gender: .female, size: 64)
+    }
+    .padding()
+}
+
+#Preview("Logo and wordmark") {
+    VStack(spacing: 16) {
+        CreaseLogo(size: 48)
+        Wordmark()
+    }
+    .padding()
+    .background(Palette.brand)
+}
+
+#Preview("Pulsing dot") {
+    PulsingDot().padding()
+}
+
+#Preview("Skeletons") {
+    VStack(spacing: 12) {
+        Skeleton()
+        Skeleton(height: 40, radius: 12)
+        SkeletonList(count: 2)
+    }
+    .padding()
+}
+
+#Preview("Message") {
+    MessageView(text: "errorGeneric", systemImage: "exclamationmark.triangle") {}
+}
+
+#Preview("Section header") {
+    SectionHeader(title: "myTeams", count: 3).padding()
+}
+
+#Preview("Expandable card") {
+    ExpandableCard(title: "bowling", subtitle: "4 bowlers", initiallyExpanded: true) {
+        Text(verbatim: "Tharindu Gunasekara 2-0-14-1")
+    }
+    .padding()
+    .screenBackground()
+}
+
+#Preview("Choice chips") {
+    @Previewable @State var selected = 0
+    VStack(spacing: 12) {
+        HStack {
+            ForEach(0..<3) { i in ChoiceChip(title: "filterLive", selected: selected == i) { selected = i } }
+        }
+    }
+    .padding()
+}
+
+#Preview("Underline tabs") {
+    @Previewable @State var tab = 0
+    VStack(spacing: 24) {
+        UnderlineTabs(tabs: [(0, "tabLive"), (1, "tabScorecard"), (2, "tabSquads")], selection: $tab)
+        UnderlineTabs(tabs: [(0, "teamTabPlayers"), (1, "teamTabInfo")], selection: $tab)
+    }
+}
+
+#Preview("Pill segments") {
+    @Previewable @State var side = "A"
+    PillSegments(tabs: [("A", "Kandy Kings"), ("B", "Galle Gladiators")], selection: $side).padding()
+}
+
+#Preview("Batter and bowler lines") {
+    VStack(spacing: 0) {
+        BatterLine(name: "Kasun Perera", runs: 42, balls: 31, striker: true)
+        BatterLine(name: "Dilan Fernando", runs: 7, balls: 12, striker: false)
+        BowlerLine(name: "Akila Pathirana", figures: "3.2-0-24-1")
+    }
+    .padding()
+}
+
+#Preview("Flow layout") {
+    FlowLayout {
+        ForEach(MatchFormat.allCases, id: \.self) { ChoiceChip(title: $0.label, selected: $0 == .t20) {} }
+    }
+    .padding()
+}
+
+#Preview("Icon badge") {
+    HStack(spacing: 32) {
+        IconBadge(systemName: "bell")
+        IconBadge(systemName: "bell", count: 3)
+        IconBadge(systemName: "envelope", count: 12)
+    }
+    .padding()
+}
+
+#Preview("Sheet title") {
+    SheetTitle(title: "newTeam").padding()
+}
+
+#Preview("Language sheet") {
+    Color.clear.sheet(isPresented: .constant(true)) { LanguageSheet() }.previewEnvironment()
+}
+#endif

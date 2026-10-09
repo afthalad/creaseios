@@ -36,9 +36,9 @@ struct PlayerProfileFormView: View {
                         .overlay(alignment: .bottomTrailing) {
                             Image(systemName: "camera.fill")
                                 .font(.system(size: 15))
-                                .foregroundStyle(Palette.onAccent)
+                                .foregroundStyle(Palette.onHighlight)
                                 .frame(width: 36, height: 36)
-                                .background(Circle().fill(Palette.accent))
+                                .background(Circle().fill(Palette.highlight))
                         }
                 }
                 .frame(maxWidth: .infinity)
@@ -93,12 +93,12 @@ struct PlayerProfileFormView: View {
         }
         .navigationTitle(setup ? "playerProfile" : (session.player == nil ? "playerProfileCreate" : "playerProfileEdit"))
         .navigationBarTitleDisplayMode(.inline)
-        .brandNavBar()
+        .clearNavBar()
         .navigationBarBackButtonHidden(setup)
         .toolbar {
             if setup {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("skip") { finish() }.disabled(saving).tint(Palette.onBrand)
+                    Button("skip") { finish() }.disabled(saving)
                 }
             }
         }
@@ -150,3 +150,13 @@ struct PlayerProfileFormView: View {
         if let redirect { router.open(path: redirect) }
     }
 }
+
+#if DEBUG
+#Preview("Player profile setup") {
+    NavigationStack { PlayerProfileFormView(setup: true, redirect: nil) }.previewEnvironment()
+}
+
+#Preview("Player profile edit") {
+    NavigationStack { PlayerProfileFormView(setup: false, redirect: nil) }.previewEnvironment()
+}
+#endif

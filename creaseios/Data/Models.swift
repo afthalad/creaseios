@@ -25,7 +25,7 @@ enum BowlingStyle: String, Codable, CaseIterable {
     case none, rightArmFast, rightArmMedium, rightArmSpin, leftArmFast, leftArmMedium, leftArmSpin
 }
 enum Gender: String, Codable, CaseIterable { case male, female }
-enum MemberStatus: String, Codable { case pending, accepted }
+enum MemberStatus: String, Codable { case pending, accepted, declined }
 
 extension KeyedDecodingContainer {
     func value<T: Decodable>(_ key: Key, default fallback: T) -> T {
@@ -277,9 +277,44 @@ struct TeamMember: Codable, Hashable, Identifiable {
     var teamLogoUrl: String?
     var status: MemberStatus
     var invitedAt: String
+    var respondedAt: String?
+    var declineReason: String?
 
     var id: String { Self.docID(teamId, playerId) }
     var isPending: Bool { status == .pending }
+    var isAccepted: Bool { status == .accepted }
     var isOwner: Bool { ownerId == playerId }
     static func docID(_ team: String, _ player: String) -> String { "\(team)_\(player)" }
+}
+
+struct AppNotification: Codable, Hashable, Identifiable {
+    enum Kind: String, Codable { case teamInvite, inviteAccepted, inviteDeclined }
+
+    var id: String
+    var userId: String
+    var kind: Kind
+    var teamId: String
+    var teamName: String
+    var teamLogoUrl: String?
+    var fromName: String
+    var reason: String?
+    var createdAt: String
+    var read = false
+
+    var createdDate: Date { ISODate.parse(createdAt) ?? .now }
+}
+
+struct Banner: Codable, Hashable, Identifiable {
+    var id = ""
+    var imageUrl: String
+    var linkUrl: String?
+    var order: Int
+
+    enum CodingKeys: String, CodingKey { case imageUrl, linkUrl, order }
+
+    var image: URL? { URL(string: imageUrl) }
+    var link: URL? { linkUrl.flatMap(URL.init(string:)) }
+
+    /// Width to height. Banner images should be made at this ratio, e.g. 1600 x 800.
+    static let aspectRatio: CGFloat = 2
 }

@@ -67,9 +67,11 @@ final class ScoringModel {
     }
 
     func load() async {
-        guard let m = try? await env.matches.getMatch(matchID) else { notFound = true; return }
+        async let loadedMatch = env.matches.getMatch(matchID)
+        async let loadedEvents = env.matches.loadEvents(matchID)
+        guard let m = try? await loadedMatch else { notFound = true; return }
         match = m
-        events = (try? await env.matches.loadEvents(matchID)) ?? []
+        events = (try? await loadedEvents) ?? []
         seq = events.map(\.seq).max() ?? 0
         rebuild()
     }
@@ -217,3 +219,16 @@ final class ScoringModel {
         match = m
     }
 }
+
+#if DEBUG
+extension ScoringModel {
+    static func preview(_ match: Match) -> ScoringModel {
+        let m = ScoringModel(matchID: match.id, env: .preview())
+        m.match = match
+        m.events = match.sampleEvents
+        m.seq = m.events.count
+        m.rebuild()
+        return m
+    }
+}
+#endif

@@ -50,6 +50,22 @@ extension Query {
     }
 }
 
+extension Query {
+    /// A live list that decodes only the documents changed since the last snapshot.
+    /// Keeps the query's order unless `sorted` is given.
+    func streamList<T>(sorted: ((T, T) -> Bool)? = nil,
+                       _ decode: @escaping (QueryDocumentSnapshot) -> T?) -> AsyncThrowingStream<[T], Error> {
+        var decoded: [String: T] = [:]
+        return stream { snap in
+            for change in snap.documentChanges {
+                decoded[change.document.documentID] = change.type == .removed ? nil : decode(change.document)
+            }
+            let list = snap.documents.compactMap { decoded[$0.documentID] }
+            return sorted.map { list.sorted(by: $0) } ?? list
+        }
+    }
+}
+
 extension DocumentReference {
     func stream<T>(_ map: @escaping (DocumentSnapshot) throws -> T?) -> AsyncThrowingStream<T?, Error> {
         AsyncThrowingStream { continuation in

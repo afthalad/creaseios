@@ -13,6 +13,7 @@ final class TeamModel {
     var notFound = false
     var results: [PlayerProfile] = []
     var uploadingLogo = false
+    var searching = false
     var profiles: [String: PlayerProfile] = [:]
     var stats: [String: PlayerStats] = [:]
     var query = "" { didSet { scheduleSearch() } }
@@ -26,15 +27,16 @@ final class TeamModel {
         self.env = env
     }
 
-    var pending: [TeamMember] { members.filter(\.isPending) }
-    func status(of playerID: String) -> MemberStatus? { members.first { $0.playerId == playerID }?.status }
+    /// Invites still waiting or turned down, newest first.
+    var invites: [TeamMember] { members.filter { !$0.isAccepted }.sorted { $0.invitedAt > $1.invitedAt } }
+    func member(_ playerID: String) -> TeamMember? { members.first { $0.playerId == playerID } }
 
     /// Captain first, then vice captain, then everyone else in the order they joined.
     var accepted: [TeamMember] {
         let rank: (TeamMember) -> Int = { [team] m in
             m.playerId == team?.captainId ? 0 : m.playerId == team?.viceCaptainId ? 1 : 2
         }
-        return members.filter { !$0.isPending }.sorted { (rank($0), $0.invitedAt) < (rank($1), $1.invitedAt) }
+        return members.filter(\.isAccepted).sorted { (rank($0), $0.invitedAt) < (rank($1), $1.invitedAt) }
     }
 
     func watch() async {
@@ -64,17 +66,32 @@ final class TeamModel {
     }
 
     private func loadProfiles(for ids: [String]) async {
-        for id in ids where profiles[id] == nil {
-            if let p = try? await env.players.get(id) { profiles[id] = p }
+        let players = env.players
+        let missing = ids.filter { profiles[$0] == nil }
+        let found = await withTaskGroup(of: PlayerProfile?.self) { group in
+            for id in missing { group.addTask { try? await players.get(id) } }
+            var list: [PlayerProfile] = []
+            for await p in group { if let p { list.append(p) } }
+            return list
         }
+        for p in found { profiles[p.uid] = p }
     }
 
     /// Career figures for this team's players, replayed from every match the viewer can read.
     func loadStats() async {
-        guard let matches = try? await env.matches.teamMatches(teamID, uid: env.session.uid) else { return }
+        let repo = env.matches
+        guard let matches = try? await repo.teamMatches(teamID, uid: env.session.uid) else { return }
+        let played = matches.filter { [.live, .completed, .abandoned].contains($0.status) }
+        let logs = await withTaskGroup(of: (Match, [MatchEvent])?.self) { group in
+            for match in played {
+                group.addTask { (try? await repo.loadEvents(match.id)).map { (match, $0) } }
+            }
+            var list: [(Match, [MatchEvent])] = []
+            for await log in group { if let log { list.append(log) } }
+            return list
+        }
         var totals: [String: PlayerStats] = [:]
-        for match in matches where [.live, .completed, .abandoned].contains(match.status) {
-            guard let events = try? await env.matches.loadEvents(match.id) else { continue }
+        for (match, events) in logs {
             let state = env.engine.replay(events: events, config: match.config, inningsBattingTeam: match.inningsBattingOrder)
             for inn in state.innings {
                 for (id, b) in inn.batters { totals[id, default: .init()].runs += b.runs; totals[id, default: .init()].balls += b.balls }
@@ -89,19 +106,20 @@ final class TeamModel {
         searchTask = Task {
             try? await Task.sleep(for: .milliseconds(300))
             guard !Task.isCancelled else { return }
-            results = (try? await env.players.search(query)) ?? []
+            searching = true
+            let found = (try? await env.players.search(query)) ?? []
+            guard !Task.isCancelled else { return }
+            results = found
+            searching = false
         }
     }
 
-    func invite(_ p: PlayerProfile) async {
-        guard let team else { return }
+    func invite(_ p: PlayerProfile) async -> Bool {
+        guard let team else { return false }
         let m = TeamMember(teamId: team.id, teamName: team.name, ownerId: team.ownerId, ownerName: team.ownerName,
                            playerId: p.uid, playerName: p.name, playerGender: p.gender, playerPhotoUrl: p.photoUrl,
                            teamLogoUrl: team.logoUrl, status: .pending, invitedAt: ISODate.string(.now))
-        do {
-            try env.teams.invite(m)
-            await env.functions.notify("team_invite", ["teamId": team.id, "playerId": p.uid])
-        } catch {}
+        return await env.sendInvite(m)
     }
 
     func remove(_ m: TeamMember) async {
@@ -120,7 +138,7 @@ final class TeamModel {
         guard let data = image.jpegForUpload(maxSide: 512, quality: 0.85) else { return }
         uploadingLogo = true
         defer { uploadingLogo = false }
-        if let url = try? await env.functions.uploadPhoto(data, teamID: teamID) {
+        if let url = try? await env.photos.upload(data, teamID: teamID) {
             try? await env.teams.setLogo(teamID, url: url)
         }
     }
@@ -135,6 +153,7 @@ struct TeamView: View {
         Group {
             if let model { TeamContent(model: model) } else { SkeletonList(count: 3) }
         }
+        .smoothChange(model == nil)
         .screenBackground()
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
@@ -155,6 +174,7 @@ private struct TeamContent: View {
     @State private var tab = TeamTab.players
     @State private var searching = false
     @State private var editing = false
+    @State private var failed = false
 
     private var isOwner: Bool { model.team?.ownerId == session.uid }
 
@@ -166,7 +186,7 @@ private struct TeamContent: View {
                 ScrollView {
                     VStack(spacing: 0) {
                         header(team)
-                        UnderlineTabs(tabs: [(.players, "teamTabPlayers"), (.info, "teamTabInfo")], selection: $tab, onSurface: true)
+                        UnderlineTabs(tabs: [(.players, "teamTabPlayers"), (.info, "teamTabInfo")], selection: $tab)
                             .background(Palette.surface)
                         Group {
                             switch tab {
@@ -182,6 +202,11 @@ private struct TeamContent: View {
                 SkeletonList(count: 3)
             }
         }
+        .smoothChange(model.team == nil)
+        .smoothChange(model.notFound)
+        .smoothChange(model.members)
+        .smoothChange(model.stats)
+        .smoothChange(tab)
         .toolbar {
             if isOwner {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -193,6 +218,7 @@ private struct TeamContent: View {
         }
         .sheet(isPresented: $searching) { PlayerSearchSheet(model: model) }
         .sheet(isPresented: $editing) { EditTeamSheet(model: model) }
+        .alert("inviteActionFailed", isPresented: $failed) { Button("ok") {} }
     }
 
     private func header(_ team: Team) -> some View {
@@ -255,18 +281,14 @@ private struct TeamContent: View {
         }
         .background(RoundedRectangle(cornerRadius: 18).fill(Palette.surface))
 
-        if !model.pending.isEmpty {
+        if isOwner && !model.invites.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                SectionHeader(title: "invited", count: model.pending.count)
-                ForEach(model.pending) { m in
-                    HStack(spacing: 12) {
-                        PlayerPhoto(photoURL: m.playerPhotoUrl, gender: m.playerGender, size: 40)
-                        Text(verbatim: m.playerName).font(AppFont.body(15, .medium)).foregroundStyle(Palette.ink)
-                        Spacer()
-                        Text("memberPending").font(AppFont.body(13, .semibold)).foregroundStyle(Palette.extra)
+                SectionHeader(title: "invited", count: model.invites.count)
+                ForEach(model.invites) { m in
+                    InviteRow(invite: m, sent: true) {
+                        if await !model.env.inviteAgain(m) { failed = true }
                     }
-                    .card(padding: 12)
-                    .contextMenu { if isOwner { removeButton(m) } }
+                        .contextMenu { removeButton(m) }
                 }
             }
             .padding(.top, 20)
@@ -326,7 +348,7 @@ private struct TeamContent: View {
             if m.playerId == team.viceCaptainId { return ("viceCaptain", Palette.four) }
             switch model.profiles[m.playerId]?.role ?? .batter {
             case .batter: return ("roleBatter", Palette.six)
-            case .bowler: return ("roleBowler", Palette.wkt)
+            case .bowler: return ("roleBowler", Palette.wicket)
             case .allRounder: return ("roleAllRounder", Palette.allRounder)
             case .wicketKeeper: return ("roleWicketKeeper", Palette.extra)
             }
@@ -428,11 +450,15 @@ private struct PlayerSearchSheet: View {
     @Bindable var model: TeamModel
     @Environment(\.locale) private var locale
     @Environment(\.dismiss) private var dismiss
+    @State private var failed = false
+    @State private var inviting: Set<String> = []
 
     var body: some View {
         NavigationStack {
             List {
-                if !model.query.trimmed.isEmpty && model.results.isEmpty {
+                if model.searching && model.results.isEmpty {
+                    ProgressView().frame(maxWidth: .infinity)
+                } else if !model.query.trimmed.isEmpty && model.results.isEmpty {
                     Text("searchNoResults").foregroundStyle(Palette.ink3)
                 }
                 ForEach(model.results) { p in
@@ -443,14 +469,19 @@ private struct PlayerSearchSheet: View {
                             Text(verbatim: p.summary(locale)).font(AppFont.body(12)).foregroundStyle(Palette.ink3)
                         }
                         Spacer()
-                        switch model.status(of: p.uid) {
+                        let member = model.member(p.uid)
+                        switch member?.status {
                         case .accepted: Text("inTeam").font(AppFont.body(13, .medium)).foregroundStyle(Palette.ink3)
                         case .pending: Text("invited").font(AppFont.body(13, .semibold)).foregroundStyle(Palette.extra)
-                        case nil:
-                            Button("invite") { Task { await model.invite(p) } }
-                                .font(AppFont.body(13, .bold))
-                                .buttonStyle(.borderedProminent)
-                                .tint(Palette.btn)
+                        case .declined, nil:
+                            if inviting.contains(p.uid) {
+                                ProgressView()
+                            } else {
+                                Button(member == nil ? "invite" : "inviteAgain") { invite(p) }
+                                    .font(AppFont.body(13, .bold))
+                                    .buttonStyle(.borderedProminent)
+                                    .tint(Palette.btn)
+                            }
                         }
                     }
                 }
@@ -459,7 +490,56 @@ private struct PlayerSearchSheet: View {
             .navigationTitle("addPlayers")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("ok") { dismiss() } } }
+            .alert("inviteActionFailed", isPresented: $failed) { Button("ok") {} }
+            .smoothChange(model.results)
+            .smoothChange(model.members)
         }
         .presentationDetents([.large])
     }
+
+    private func invite(_ p: PlayerProfile) {
+        inviting.insert(p.uid)
+        Task {
+            if await !model.invite(p) { failed = true }
+            inviting.remove(p.uid)
+        }
+    }
 }
+
+#if DEBUG
+@MainActor private func previewModel() -> TeamModel {
+    let m = TeamModel(teamID: Team.sample.id, env: .preview())
+    m.team = .sample
+    m.members = TeamMember.teamSamples
+    m.stats = ["kasun": PlayerStats(runs: 214, balls: 160, wickets: 6), "dilan": PlayerStats(runs: 98, balls: 91)]
+    m.results = PlayerProfile.samples
+    return m
+}
+
+#Preview("Team") {
+    NavigationStack {
+        TeamContent(model: previewModel())
+            .screenBackground()
+            .toolbarBackground(.hidden, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+    }
+    .previewEnvironment()
+}
+
+#Preview("Team as visitor") {
+    NavigationStack { TeamContent(model: previewModel()).screenBackground() }
+        .previewEnvironment(signedIn: false)
+}
+
+#Preview("Team loading") {
+    NavigationStack { TeamView(teamID: Team.sample.id) }.previewEnvironment()
+}
+
+#Preview("Edit team sheet") {
+    Color.clear.sheet(isPresented: .constant(true)) { EditTeamSheet(model: previewModel()) }
+}
+
+#Preview("Player search sheet") {
+    Color.clear.sheet(isPresented: .constant(true)) { PlayerSearchSheet(model: previewModel()) }
+}
+#endif

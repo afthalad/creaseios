@@ -54,12 +54,24 @@ final class MatchCenterModel {
         let status: MatchStatus = remaining.isEmpty ? .live : .pending
         do {
             try await env.matches.confirm(matchID, status: status, pendingOwnerIds: remaining)
-            if remaining.isEmpty { await env.functions.notify("match_confirmed", ["matchId": matchID]) }
+            if remaining.isEmpty { await env.notifier.notify("match_confirmed", ["matchId": matchID]) }
         } catch {}
     }
 
     func decline() async {
-        await env.functions.notify("match_declined", ["matchId": matchID])
+        await env.notifier.notify("match_declined", ["matchId": matchID])
         try? await env.matches.delete(matchID)
     }
 }
+
+#if DEBUG
+extension MatchCenterModel {
+    static func preview(_ match: Match) -> MatchCenterModel {
+        let m = MatchCenterModel(matchID: match.id, env: .preview())
+        m.match = match
+        m.events = match.sampleEvents
+        m.replay()
+        return m
+    }
+}
+#endif
